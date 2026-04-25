@@ -32,7 +32,7 @@ def test_timedelta_to_iso_8601_round_trip() -> None:
     assert iso.startswith("PT")
     # Round-trip via whenever to confirm the format is parseable.
     parsed = TimeDelta.parse_iso(iso)
-    assert parsed.in_seconds() == 12.5
+    assert parsed.total('seconds') == 12.5
 
 
 def test_numpy_float_scalar() -> None:
