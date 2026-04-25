@@ -8,6 +8,8 @@ requires-python = ">=3.12"
 dependencies = [
     "gaussian_job_config",
     "cclib>=1.7,<2",
+    "whenever>=0.6",
+    "polars>=0.20",
 ]
 
 [build-system]
@@ -33,6 +35,8 @@ hatchling = "*"
 python = ">=3.12"
 gaussian_job_config = "*"
 cclib = ">=1.7,<2"
+whenever = ">=0.6"
+polars = ">=0.20"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
