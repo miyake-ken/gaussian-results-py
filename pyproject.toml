@@ -1,0 +1,43 @@
+[project]
+name = "gaussian-job-results"
+version = "0.1.0"
+description = "Parse GAUSSIAN .out logs into a curated, JSON-serializable result via cclib"
+readme = "README.md"
+authors = [{ name = "kkiyama117", email = "k.kiyama117@gmail.com" }]
+requires-python = ">=3.12"
+dependencies = [
+    "gaussian_job_config",
+    "cclib>=1.7,<2",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.pixi.package]
+name = "gaussian_job_results"
+version = "0.1.0"
+
+[tool.pixi.package.build.backend]
+name = "pixi-build-python"
+version = "*"
+channels = [
+  "https://prefix.dev/pixi-build-backends",
+  "https://prefix.dev/conda-forge",
+]
+
+[tool.pixi.package.host-dependencies]
+hatchling = "*"
+
+[tool.pixi.package.run-dependencies]
+python = ">=3.12"
+gaussian_job_config = "*"
+cclib = ">=1.7,<2"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-ra -q"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/gaussian_job_results"]
