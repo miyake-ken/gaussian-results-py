@@ -10,44 +10,12 @@ from __future__ import annotations
 
 from gaussian_job_results.parser import (
     _float_or_none,
-    _floats,
-    _ints,
+    _gbasis,
     _int_or_none,
-    _last_float,
-    _last_geometry,
+    _optional_tuple_of_str,
     _str_or_none,
     _tuple_of_str,
 )
-
-
-def test_last_float_none_and_empty() -> None:
-    assert _last_float(None) is None
-    assert _last_float([]) is None
-
-
-def test_last_float_invalid_type() -> None:
-    # An object that has no len/__getitem__ should swallow.
-    assert _last_float(object()) is None
-
-
-def test_last_geometry_none_and_empty() -> None:
-    assert _last_geometry(None) is None
-    assert _last_geometry([]) is None
-
-
-def test_last_geometry_bad_shape() -> None:
-    # Rows shorter than 3 elements raise IndexError; helper returns None.
-    assert _last_geometry([[(1.0, 2.0)]]) is None
-
-
-def test_floats_none_and_bad_value() -> None:
-    assert _floats(None) is None
-    assert _floats(["not-a-number"]) is None
-
-
-def test_ints_none_and_bad_value() -> None:
-    assert _ints(None) == ()
-    assert _ints(["not-an-int"]) == ()
 
 
 def test_float_or_none_paths() -> None:
@@ -72,5 +40,37 @@ def test_tuple_of_str_paths() -> None:
     assert _tuple_of_str(None) == ()
     assert _tuple_of_str("DFT") == ("DFT",)
     assert _tuple_of_str(["DFT", "MP2"]) == ("DFT", "MP2")
-    # Non-iterable, non-string falls back to empty.
     assert _tuple_of_str(42) == ()
+
+
+def test_optional_tuple_of_str_paths() -> None:
+    assert _optional_tuple_of_str(None) is None
+    assert _optional_tuple_of_str("R1") == ("R1",)
+    assert _optional_tuple_of_str(["R1", "R2"]) == ("R1", "R2")
+    # Empty iterable collapses to None to indicate absence.
+    assert _optional_tuple_of_str([]) is None
+    # Non-iterable, non-string falls back to None.
+    assert _optional_tuple_of_str(42) is None
+
+
+def test_gbasis_none_and_empty() -> None:
+    assert _gbasis(None) is None
+    assert _gbasis([]) is None
+
+
+def test_gbasis_valid_shape() -> None:
+    # cclib gbasis: list of [(label, [(exp, coef), ...]), ...] per atom.
+    raw = [
+        [("S", [(1.0, 0.5), (2.0, 0.5)])],
+        [("P", [(3.0, 1.0)])],
+    ]
+    result = _gbasis(raw)
+    assert result == (
+        (("S", ((1.0, 0.5), (2.0, 0.5))),),
+        (("P", ((3.0, 1.0),)),),
+    )
+
+
+def test_gbasis_malformed_shape() -> None:
+    # Missing the contraction pair; helper returns None instead of raising.
+    assert _gbasis([[("S",)]]) is None

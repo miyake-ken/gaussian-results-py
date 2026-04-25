@@ -2,73 +2,57 @@
 
 from __future__ import annotations
 
-import math
 from pathlib import Path
 
 import pytest
 
-from gaussian_job_results import GaussianResult, parse_compound, parse_log
+from gaussian_job_results import (
+    GaussianResult,
+    GaussianRunInfo,
+    GaussianRunSetup,
+    parse_compound,
+    parse_log,
+)
 
 
 def test_parse_log_normal_termination(replica_log_path: Path) -> None:
     result = parse_log(replica_log_path)
 
     assert isinstance(result, GaussianResult)
-    assert result.success is True
-    assert result.package == "Gaussian"
-    assert result.package_version is not None
-    assert (
-        result.package_version.startswith("2016")
-        or result.package_version.startswith("16")
-    )
-    assert "DFT" in result.methods
-    assert result.basis_set == "6-31++G(d,p)"
-    assert result.natom == 11
-    assert result.optdone is True
+    assert isinstance(result.run_info, GaussianRunInfo)
+    assert isinstance(result.run_setup, GaussianRunSetup)
 
-    # Final energy: cclib reports scfenergies in eV.
-    assert result.final_energy_eV is not None
-    assert math.isfinite(result.final_energy_eV)
-    assert result.final_energy_eV < 0
+    info = result.run_info
+    assert info.success is True
+    assert info.package == "Gaussian"
+    assert info.package_version is not None
+    assert info.package_version.startswith("2016") or info.package_version.startswith("16")
+    assert "DFT" in info.methods
+    assert info.optdone is True
 
-    # Geometry: 11 atoms, 3 coordinates each.
-    geom = result.final_geometry_angstrom
-    assert geom is not None
-    assert len(geom) == 11
-    for row in geom:
-        assert len(row) == 3
-        assert all(isinstance(c, float) for c in row)
+    setup = result.run_setup
+    assert setup.basis_set == "6-31++G(d,p)"
+    assert setup.natom == 11
+    assert setup.charge == 1
+    assert setup.mult == 1
+    assert setup.temperature == pytest.approx(298.15)
+    assert setup.pressure == pytest.approx(1.0)
 
-    # Atomic numbers: trimethylamine cation skeleton starts with N, C, C, ...
-    assert result.atomic_numbers[:3] == (7, 6, 6)
-    assert len(result.atomic_numbers) == 11
-
-    # Frequencies: 3N-6 = 27 normal modes.
-    assert result.vibfreqs_cm1 is not None
-    assert len(result.vibfreqs_cm1) == 27
-    assert result.vibirs_km_per_mol is not None
-    assert len(result.vibirs_km_per_mol) == 27
-
-    # Thermochemistry.
-    assert result.zpve_hartree is not None
-    assert result.enthalpy_hartree is not None
-    assert result.freeenergy_hartree is not None
-    assert result.entropy_hartree_per_K is not None
-    assert result.temperature_K == pytest.approx(298.15)
-    assert result.pressure_atm == pytest.approx(1.0)
+    # gbasis / scannames: this fixture is opt+freq without gfprint or a scan,
+    # so cclib does not populate these attributes — both are None.
+    assert setup.gbasis is None
+    assert setup.scannames is None
 
 
-def test_parse_log_keep_raw_true(replica_log_path: Path) -> None:
-    result = parse_log(replica_log_path, keep_raw=True)
+def test_parse_log_raw_is_populated(replica_log_path: Path) -> None:
+    # `raw` is always set; outputs are read from it.
+    result = parse_log(replica_log_path)
     assert result.raw is not None
-    # cclib's parsed object exposes .scfenergies — duck-type rather than
-    # importing the private cclib data class.
     assert hasattr(result.raw, "scfenergies")
-
-
-def test_parse_log_keep_raw_false(replica_log_path: Path) -> None:
-    result = parse_log(replica_log_path, keep_raw=False)
-    assert result.raw is None
+    # Final SCF energy in eV is finite and negative.
+    assert float(result.raw.scfenergies[-1]) < 0
+    # 3N - 6 = 27 vibrational modes for 11 atoms.
+    assert len(result.raw.vibfreqs) == 27
 
 
 def test_parse_log_missing_file(tmp_path: Path) -> None:
@@ -85,15 +69,15 @@ def test_parse_log_unrecognized_file(replica_gjf_path: Path) -> None:
 
 def test_parse_log_accepts_str_path(replica_log_path: Path) -> None:
     result = parse_log(str(replica_log_path))
-    assert result.success is True
+    assert result.run_info.success is True
 
 
 def test_parse_compound_main_out_preferred(
     replica_compound_dir: Path,
 ) -> None:
     result = parse_compound(replica_compound_dir)
-    assert result.source_path.name == "main.out"
-    assert result.success is True
+    assert result.run_info.source_path.name == "main.out"
+    assert result.run_info.success is True
 
 
 def test_parse_compound_no_log_found(tmp_path: Path) -> None:

@@ -1,13 +1,24 @@
 """Curated, JSON-friendly result type for a parsed GAUSSIAN log.
 
-This dataclass intentionally exposes a small, opinionated subset of what
-``cclib`` parses out of a Gaussian ``.out`` file. The full ``ccData`` object
-is available on :attr:`GaussianResult.raw` for callers that need attributes
-not surfaced here.
+The dataclass groups a small, opinionated subset of cclib's parsed
+attributes into two curated namespaces and keeps the raw cclib
+``ccData`` object as the canonical source of computed outputs:
 
-All sequence/array fields are plain Python tuples (recursively for 2-D
-geometry data) so that :func:`dataclasses.asdict` produces a JSON-ready
-structure with no numpy types.
+* :class:`GaussianRunInfo` — run identity (source path, package
+  metadata, optimization completion, termination status).
+* :class:`GaussianRunSetup` — calculation setup (basis, atom count,
+  charge, multiplicity, scan names, temperature, pressure).
+* :attr:`GaussianResult.raw` — the cclib ``ccData`` object. All
+  computed quantities (final energy, geometry, vibrational data,
+  thermochemistry) are read from here.
+
+Field names match cclib's attribute names where applicable so that
+callers can move freely between the curated view and ``raw`` without
+remembering a translation table.
+
+All sequence/array fields are plain Python tuples (recursively for
+nested structures like ``gbasis``) so that :func:`dataclasses.asdict`
+produces a JSON-ready structure with no numpy types.
 """
 
 from __future__ import annotations
@@ -16,31 +27,44 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 GeometryRow = tuple[float, float, float]
+GbasisContraction = tuple[float, float]
+GbasisFunction = tuple[str, tuple[GbasisContraction, ...]]
+GbasisAtom = tuple[GbasisFunction, ...]
 
 
 @dataclass(frozen=True)
-class GaussianResult:
-    """Parsed, curated result of a single GAUSSIAN job log."""
+class GaussianRunInfo:
+    """Run identity, package, and termination status."""
 
     source_path: Path
     package: str
     package_version: str | None
     success: bool
     methods: tuple[str, ...]
+    optdone: bool
+
+
+@dataclass(frozen=True)
+class GaussianRunSetup:
+    """Calculation setup: the inputs that shaped the SCF."""
+
     basis_set: str | None
     natom: int
     charge: int | None
-    multiplicity: int | None
-    optdone: bool
-    final_energy_eV: float | None
-    final_geometry_angstrom: tuple[GeometryRow, ...] | None
-    atomic_numbers: tuple[int, ...]
-    vibfreqs_cm1: tuple[float, ...] | None
-    vibirs_km_per_mol: tuple[float, ...] | None
-    zpve_hartree: float | None
-    enthalpy_hartree: float | None
-    freeenergy_hartree: float | None
-    entropy_hartree_per_K: float | None
-    temperature_K: float | None
-    pressure_atm: float | None
-    raw: object | None = field(default=None, repr=False, compare=False)
+    mult: int | None
+    gbasis: tuple[GbasisAtom, ...] | None
+    scannames: tuple[str, ...] | None
+    temperature: float | None
+    pressure: float | None
+
+
+@dataclass(frozen=True)
+class GaussianResult:
+    """Parsed result of a single GAUSSIAN job log.
+
+    ``raw`` is always populated; computed outputs live there.
+    """
+
+    run_info: GaussianRunInfo
+    run_setup: GaussianRunSetup
+    raw: object = field(repr=False, compare=False)

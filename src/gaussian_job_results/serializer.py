@@ -1,9 +1,9 @@
 """JSON serialization for :class:`GaussianResult`.
 
-Every numeric field on the dataclass is already a plain Python type
-(``int`` / ``float`` / nested ``tuple``), so a single pass through the
-standard library ``json`` module is sufficient. The ``raw`` ``ccData``
-attribute is stripped before encoding.
+Every numeric field on the curated dataclasses is already a plain
+Python type (``int`` / ``float`` / nested ``tuple``), so a single pass
+through the standard library ``json`` module is sufficient. The
+``raw`` ``ccData`` attribute is stripped before encoding.
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ from .result import GaussianResult
 def _to_serializable(result: GaussianResult) -> dict:
     payload = asdict(result)
     payload.pop("raw", None)
-    payload["source_path"] = str(result.source_path)
+    payload["run_info"]["source_path"] = str(result.run_info.source_path)
     return payload
 
 

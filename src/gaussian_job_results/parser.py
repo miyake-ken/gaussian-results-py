@@ -8,10 +8,15 @@ from typing import Any
 import cclib
 
 from .discovery import find_log_in_compound_dir
-from .result import GaussianResult, GeometryRow
+from .result import (
+    GaussianResult,
+    GaussianRunInfo,
+    GaussianRunSetup,
+    GbasisAtom,
+)
 
 
-def parse_log(path: Path | str, *, keep_raw: bool = True) -> GaussianResult:
+def parse_log(path: Path | str) -> GaussianResult:
     """Parse a single Gaussian ``.out`` / ``.log`` file.
 
     Raises:
@@ -29,96 +34,87 @@ def parse_log(path: Path | str, *, keep_raw: bool = True) -> GaussianResult:
             f"cclib could not identify {log_path} as a supported QC output"
         )
 
-    return _build_result(log_path, data, keep_raw=keep_raw)
+    return _build_result(log_path, data)
 
 
 def parse_compound(
     compound_dir: Path | str,
     *,
     log_glob: str = "*.out",
-    keep_raw: bool = True,
 ) -> GaussianResult:
     """Parse the canonical log inside a compound directory."""
     log_path = find_log_in_compound_dir(Path(compound_dir), log_glob=log_glob)
-    return parse_log(log_path, keep_raw=keep_raw)
+    return parse_log(log_path)
 
 
-def _build_result(
-    source_path: Path, data: Any, *, keep_raw: bool
-) -> GaussianResult:
-    metadata = getattr(data, "metadata", {}) or {}
-
-    final_energy = _last_float(getattr(data, "scfenergies", None))
-    final_geometry = _last_geometry(getattr(data, "atomcoords", None))
-    atomic_numbers = _ints(getattr(data, "atomnos", None))
-    vibfreqs = _floats(getattr(data, "vibfreqs", None))
-    vibirs = _floats(getattr(data, "vibirs", None))
-
+def _build_result(source_path: Path, data: Any) -> GaussianResult:
+    metadata_dict = getattr(data, "metadata", {}) or {}
     return GaussianResult(
-        source_path=source_path,
-        package=str(metadata.get("package", "")),
-        package_version=_str_or_none(metadata.get("package_version")),
-        success=bool(metadata.get("success", False)),
-        methods=_tuple_of_str(metadata.get("methods")),
-        basis_set=_str_or_none(metadata.get("basis_set")),
-        natom=int(getattr(data, "natom", 0) or 0),
-        charge=_int_or_none(getattr(data, "charge", None)),
-        multiplicity=_int_or_none(getattr(data, "mult", None)),
-        optdone=bool(getattr(data, "optdone", False)),
-        final_energy_eV=final_energy,
-        final_geometry_angstrom=final_geometry,
-        atomic_numbers=atomic_numbers,
-        vibfreqs_cm1=vibfreqs,
-        vibirs_km_per_mol=vibirs,
-        zpve_hartree=_float_or_none(getattr(data, "zpve", None)),
-        enthalpy_hartree=_float_or_none(getattr(data, "enthalpy", None)),
-        freeenergy_hartree=_float_or_none(getattr(data, "freeenergy", None)),
-        entropy_hartree_per_K=_float_or_none(getattr(data, "entropy", None)),
-        temperature_K=_float_or_none(getattr(data, "temperature", None)),
-        pressure_atm=_float_or_none(getattr(data, "pressure", None)),
-        raw=data if keep_raw else None,
+        run_info=_build_run_info(source_path, data, metadata_dict),
+        run_setup=_build_run_setup(data, metadata_dict),
+        raw=data,
     )
 
 
-def _last_float(seq: Any) -> float | None:
-    if seq is None:
-        return None
-    try:
-        if len(seq) == 0:
-            return None
-        return float(seq[-1])
-    except (TypeError, ValueError):
-        return None
+def _build_run_info(
+    source_path: Path, data: Any, metadata_dict: dict
+) -> GaussianRunInfo:
+    return GaussianRunInfo(
+        source_path=source_path,
+        package=str(metadata_dict.get("package", "")),
+        package_version=_str_or_none(metadata_dict.get("package_version")),
+        success=bool(metadata_dict.get("success", False)),
+        methods=_tuple_of_str(metadata_dict.get("methods")),
+        optdone=bool(getattr(data, "optdone", False)),
+    )
 
 
-def _last_geometry(coords: Any) -> tuple[GeometryRow, ...] | None:
-    if coords is None:
+def _build_run_setup(
+    data: Any, metadata_dict: dict
+) -> GaussianRunSetup:
+    return GaussianRunSetup(
+        basis_set=_str_or_none(metadata_dict.get("basis_set")),
+        natom=int(getattr(data, "natom", 0) or 0),
+        charge=_int_or_none(getattr(data, "charge", None)),
+        mult=_int_or_none(getattr(data, "mult", None)),
+        gbasis=_gbasis(getattr(data, "gbasis", None)),
+        scannames=_optional_tuple_of_str(getattr(data, "scannames", None)),
+        temperature=_float_or_none(getattr(data, "temperature", None)),
+        pressure=_float_or_none(getattr(data, "pressure", None)),
+    )
+
+
+def _gbasis(value: Any) -> tuple[GbasisAtom, ...] | None:
+    if value is None:
         return None
     try:
-        if len(coords) == 0:
+        atoms: list[GbasisAtom] = []
+        for atom_funcs in value:
+            funcs: list[tuple[str, tuple[tuple[float, float], ...]]] = []
+            for func in atom_funcs:
+                label = str(func[0])
+                contractions = tuple(
+                    (float(c[0]), float(c[1])) for c in func[1]
+                )
+                funcs.append((label, contractions))
+            atoms.append(tuple(funcs))
+        if not atoms:
             return None
-        last = coords[-1]
-        return tuple((float(r[0]), float(r[1]), float(r[2])) for r in last)
+        return tuple(atoms)
     except (TypeError, ValueError, IndexError):
         return None
 
 
-def _ints(seq: Any) -> tuple[int, ...]:
-    if seq is None:
-        return ()
-    try:
-        return tuple(int(x) for x in seq)
-    except (TypeError, ValueError):
-        return ()
-
-
-def _floats(seq: Any) -> tuple[float, ...] | None:
-    if seq is None:
+def _optional_tuple_of_str(value: Any) -> tuple[str, ...] | None:
+    if value is None:
         return None
+    if isinstance(value, str):
+        return (value,)
     try:
-        return tuple(float(x) for x in seq)
-    except (TypeError, ValueError):
+        result = tuple(str(x) for x in value)
+    except TypeError:
         return None
+    return result if result else None
 
 
 def _float_or_none(value: Any) -> float | None:

@@ -3,11 +3,11 @@
 Parse a finished GAUSSIAN job's `.out` log into a small, opinionated, frozen
 dataclass that JSON-serializes cleanly.
 
-This package wraps [`cclib`](https://cclib.github.io) with a curated subset of
-attributes (success flag, final energy, final geometry, vibrational
-frequencies, thermochemistry) that downstream scripts and notebooks in this
-workspace actually consume. The full `cclib.parser.data.ccData` object is
-retained on `result.raw` as an escape hatch.
+This package wraps [`cclib`](https://cclib.github.io) with two curated
+namespaces — **run identity** and **calculation setup** — and keeps the full
+`cclib.parser.data.ccData` object on `result.raw` as the canonical source of
+computed quantities (final energy, geometry, vibrational frequencies,
+thermochemistry).
 
 The user-facing CLI lives in the sibling [`gaussian_job_cli`](../gaussian_job_cli)
 package as the `gaussian-parse-results` console script (also available as
@@ -32,14 +32,21 @@ from gaussian_job_results import parse_log, parse_compound, to_json
 
 # Parse a single .out file.
 result = parse_log(Path("examples/replica/ROSDSFDQCJNGOL-UHFFFAOYSA-O/main.out"))
-print(result.success, result.package, result.natom)
-print(result.final_energy_eV, result.freeenergy_hartree)
-print(len(result.vibfreqs_cm1 or ()))
+
+# Curated views.
+print(result.run_info.success, result.run_info.package)
+print(result.run_setup.natom, result.run_setup.basis_set)
+print(result.run_setup.temperature, result.run_setup.pressure)
+
+# Computed outputs come from the cclib ccData on `raw`.
+print(result.raw.scfenergies[-1])      # final SCF energy in eV
+print(result.raw.atomcoords[-1])       # optimized geometry (Å, numpy array)
+print(len(result.raw.vibfreqs))        # number of vibrational modes
 
 # Parse the canonical log inside a compound directory.
 result = parse_compound(Path("examples/replica/ROSDSFDQCJNGOL-UHFFFAOYSA-O"))
 
-# Serialize to JSON. The `raw` ccData object is excluded.
+# Serialize the curated namespaces to JSON. `raw` is excluded.
 print(to_json(result))
 ```
 
@@ -56,21 +63,51 @@ gaussian-parse-results --input examples/replica/ROSDSFDQCJNGOL-UHFFFAOYSA-O --no
 gaussian-parse-results --config /abs/path/to/gaussian_batch.toml
 ```
 
-## Parsed fields
+## Curated namespaces
 
-Every numeric field is present only when the corresponding section is in the
-log; absent sections become `None`. See `GaussianResult` in `result.py` for
-the full list with units.
+### `run_info` — `GaussianRunInfo`
 
-| Field | Units |
+| Field | Source |
 |---|---|
-| `final_energy_eV` | eV (last `scfenergies`) |
-| `final_geometry_angstrom` | Angstrom |
-| `vibfreqs_cm1` | cm⁻¹ |
-| `vibirs_km_per_mol` | km/mol |
-| `zpve_hartree`, `enthalpy_hartree`, `freeenergy_hartree` | Hartree |
-| `entropy_hartree_per_K` | Hartree · K⁻¹ (cclib's native unit; multiply by 6.275·10⁵ to get cal · mol⁻¹ · K⁻¹) |
-| `temperature_K`, `pressure_atm` | Kelvin, atm |
+| `source_path` | The parsed log's path. |
+| `package` | `metadata['package']`, e.g. `"Gaussian"`. |
+| `package_version` | `metadata['package_version']`, e.g. `"2016+C.02"`. |
+| `success` | `metadata['success']` (Normal vs Error termination). |
+| `methods` | `metadata['methods']`. |
+| `optdone` | `data.optdone`. |
+
+### `run_setup` — `GaussianRunSetup`
+
+Names match cclib's own attribute names so callers can move freely between
+the curated view and `raw`.
+
+| Field | Source / units |
+|---|---|
+| `basis_set` | `metadata['basis_set']`. |
+| `natom` | `data.natom`. |
+| `charge` | `data.charge`. |
+| `mult` | `data.mult` (spin multiplicity). |
+| `gbasis` | `data.gbasis` — per-atom basis function definitions. `None` when cclib did not emit the basis section. |
+| `scannames` | `data.scannames` — relaxed-scan parameter names. `None` for non-scan jobs. |
+| `temperature` | `data.temperature` (K). |
+| `pressure` | `data.pressure` (atm). |
+
+### Computed outputs (accessed via `result.raw`)
+
+| cclib attribute | Description / units |
+|---|---|
+| `scfenergies` | SCF energies per step in eV. `result.raw.scfenergies[-1]` is the final energy. |
+| `atomcoords` | Geometry trajectory in Å. `result.raw.atomcoords[-1]` is the optimized geometry. |
+| `atomnos` | Atomic numbers (length `natom`). |
+| `vibfreqs` | Vibrational frequencies in cm⁻¹. |
+| `vibirs` | IR intensities in km · mol⁻¹. |
+| `zpve` | Zero-point vibrational energy (Hartree). |
+| `enthalpy`, `freeenergy` | Thermochemistry totals (Hartree). |
+| `entropy` | Entropy in Hartree · K⁻¹ (multiply by ~6.275·10⁵ for cal · mol⁻¹ · K⁻¹). |
+
+`raw` is excluded from `to_json` output. Consumers that need energies or
+geometries in JSON should either read `result.raw.scfenergies` etc. directly
+or layer their own serializer on top.
 
 ## Tests
 

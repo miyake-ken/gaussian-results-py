@@ -13,28 +13,37 @@ def test_to_json_round_trip(replica_log_path: Path) -> None:
     blob = to_json(result)
     decoded = json.loads(blob)
 
-    assert decoded["package"] == "Gaussian"
-    assert decoded["success"] is True
-    assert decoded["natom"] == 11
-    assert decoded["temperature_K"] == 298.15
-    assert len(decoded["vibfreqs_cm1"]) == 27
-    assert len(decoded["final_geometry_angstrom"]) == 11
-    # source_path is serialized as a plain string.
-    assert isinstance(decoded["source_path"], str)
-    assert decoded["source_path"].endswith("main.out")
+    assert decoded["run_info"]["package"] == "Gaussian"
+    assert decoded["run_info"]["success"] is True
+    assert decoded["run_setup"]["natom"] == 11
+    assert decoded["run_setup"]["temperature"] == 298.15
+    assert decoded["run_setup"]["pressure"] == 1.0
+    # source_path is serialized as a plain string under run_info.
+    assert isinstance(decoded["run_info"]["source_path"], str)
+    assert decoded["run_info"]["source_path"].endswith("main.out")
 
 
 def test_to_json_excludes_raw(replica_log_path: Path) -> None:
-    result = parse_log(replica_log_path, keep_raw=True)
+    result = parse_log(replica_log_path)
     decoded = json.loads(to_json(result))
     assert "raw" not in decoded
+
+
+def test_to_json_top_level_keys(replica_log_path: Path) -> None:
+    result = parse_log(replica_log_path)
+    decoded = json.loads(to_json(result))
+    # Exactly two namespaces; raw is excluded.
+    assert set(decoded.keys()) == {"run_info", "run_setup"}
 
 
 def test_to_json_keys_sorted(replica_log_path: Path) -> None:
     result = parse_log(replica_log_path)
     blob = to_json(result)
-    decoded_keys = list(json.loads(blob).keys())
-    assert decoded_keys == sorted(decoded_keys)
+    decoded = json.loads(blob)
+    # sort_keys=True applies recursively.
+    for value in decoded.values():
+        keys = list(value.keys())
+        assert keys == sorted(keys)
 
 
 def test_write_json_creates_parent_dirs(
@@ -47,7 +56,7 @@ def test_write_json_creates_parent_dirs(
 
     assert target.exists()
     decoded = json.loads(target.read_text())
-    assert decoded["natom"] == 11
+    assert decoded["run_setup"]["natom"] == 11
 
 
 def test_to_json_indent_none_returns_compact(
