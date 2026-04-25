@@ -2,13 +2,12 @@
 
 from .discovery import find_log_in_compound_dir
 from .parser import parse_compound, parse_log
-from .result import GaussianResult, GaussianRunInfo, GaussianRunSetup
+from .result import GaussianResult, GaussianRunMetadata
 from .serializer import to_json, write_json
 
 __all__ = [
     "GaussianResult",
-    "GaussianRunInfo",
-    "GaussianRunSetup",
+    "GaussianRunMetadata",
     "find_log_in_compound_dir",
     "parse_compound",
     "parse_log",

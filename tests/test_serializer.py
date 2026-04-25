@@ -13,14 +13,22 @@ def test_to_json_round_trip(replica_log_path: Path) -> None:
     blob = to_json(result)
     decoded = json.loads(blob)
 
-    assert decoded["run_info"]["package"] == "Gaussian"
-    assert decoded["run_info"]["success"] is True
-    assert decoded["run_setup"]["natom"] == 11
-    assert decoded["run_setup"]["temperature"] == 298.15
-    assert decoded["run_setup"]["pressure"] == 1.0
-    # source_path is serialized as a plain string under run_info.
-    assert isinstance(decoded["run_info"]["source_path"], str)
-    assert decoded["run_info"]["source_path"].endswith("main.out")
+    info = decoded["run_info"]
+
+    md = info["metadata"]
+    assert md["package"] == "Gaussian"
+    assert md["success"] is True
+    assert md["basis_set"] == "6-31++G(d,p)"
+    assert "DFT" in md["methods"]
+
+    assert info["natom"] == 11
+    assert info["temperature"] == 298.15
+    assert info["pressure"] == 1.0
+    assert info["optdone"] is True
+
+    # source_path is serialized as a plain string.
+    assert isinstance(info["source_path"], str)
+    assert info["source_path"].endswith("main.out")
 
 
 def test_to_json_excludes_raw(replica_log_path: Path) -> None:
@@ -32,18 +40,22 @@ def test_to_json_excludes_raw(replica_log_path: Path) -> None:
 def test_to_json_top_level_keys(replica_log_path: Path) -> None:
     result = parse_log(replica_log_path)
     decoded = json.loads(to_json(result))
-    # Exactly two namespaces; raw is excluded.
-    assert set(decoded.keys()) == {"run_info", "run_setup"}
+    # Single namespace; raw is excluded.
+    assert set(decoded.keys()) == {"run_info"}
 
 
-def test_to_json_keys_sorted(replica_log_path: Path) -> None:
+def test_to_json_keys_sorted_recursively(replica_log_path: Path) -> None:
     result = parse_log(replica_log_path)
     blob = to_json(result)
     decoded = json.loads(blob)
-    # sort_keys=True applies recursively.
-    for value in decoded.values():
-        keys = list(value.keys())
-        assert keys == sorted(keys)
+
+    # Top-level run_info keys are alphabetized.
+    run_info_keys = list(decoded["run_info"].keys())
+    assert run_info_keys == sorted(run_info_keys)
+
+    # metadata nested keys are alphabetized.
+    metadata_keys = list(decoded["run_info"]["metadata"].keys())
+    assert metadata_keys == sorted(metadata_keys)
 
 
 def test_write_json_creates_parent_dirs(
@@ -56,7 +68,7 @@ def test_write_json_creates_parent_dirs(
 
     assert target.exists()
     decoded = json.loads(target.read_text())
-    assert decoded["run_setup"]["natom"] == 11
+    assert decoded["run_info"]["natom"] == 11
 
 
 def test_to_json_indent_none_returns_compact(
@@ -64,5 +76,24 @@ def test_to_json_indent_none_returns_compact(
 ) -> None:
     result = parse_log(replica_log_path)
     blob = to_json(result, indent=None)
-    # Compact output has no newlines from indentation.
     assert "\n" not in blob
+
+
+def test_metadata_timedelta_values_are_iso_strings(
+    replica_log_path: Path,
+) -> None:
+    # Gaussian logs typically include cpu_time / wall_time. These should
+    # be serialized as ISO 8601 strings starting with "PT". If the replica
+    # fixture does not include either key, the test simply asserts nothing —
+    # the timedelta branch is exercised directly by test_json_safe.
+    result = parse_log(replica_log_path)
+    md = result.run_info.metadata
+    for key in ("cpu_time", "wall_time"):
+        if key not in md:
+            continue
+        values = md[key]
+        # The coercion uses tuple(...) for sequences but JSON renders as list.
+        assert isinstance(values, (list, tuple))
+        for entry in values:
+            assert isinstance(entry, str)
+            assert entry.startswith("PT")

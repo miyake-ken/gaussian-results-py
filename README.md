@@ -3,11 +3,13 @@
 Parse a finished GAUSSIAN job's `.out` log into a small, opinionated, frozen
 dataclass that JSON-serializes cleanly.
 
-This package wraps [`cclib`](https://cclib.github.io) with two curated
-namespaces — **run identity** and **calculation setup** — and keeps the full
-`cclib.parser.data.ccData` object on `result.raw` as the canonical source of
-computed quantities (final energy, geometry, vibrational frequencies,
-thermochemistry).
+This package wraps [`cclib`](https://cclib.github.io) with a single curated
+namespace — `GaussianRunMetadata`, accessible via `result.run_info` — that
+mirrors cclib's full `data.metadata` dict verbatim under a `metadata` field
+and exposes the cclib `ccData` attributes that aren't already in `metadata`.
+The full `cclib.parser.data.ccData` object stays on `result.raw` as the
+canonical source of computed quantities (final energy, geometry, vibrational
+frequencies, thermochemistry).
 
 The user-facing CLI lives in the sibling [`gaussian_job_cli`](../gaussian_job_cli)
 package as the `gaussian-parse-results` console script (also available as
@@ -33,10 +35,17 @@ from gaussian_job_results import parse_log, parse_compound, to_json
 # Parse a single .out file.
 result = parse_log(Path("examples/replica/ROSDSFDQCJNGOL-UHFFFAOYSA-O/main.out"))
 
-# Curated views.
-print(result.run_info.success, result.run_info.package)
-print(result.run_setup.natom, result.run_setup.basis_set)
-print(result.run_setup.temperature, result.run_setup.pressure)
+info = result.run_info
+
+# Identity / termination details mirror cclib metadata verbatim.
+print(info.metadata["package"], info.metadata["package_version"])
+print(info.metadata["success"])
+print(info.metadata["basis_set"])
+
+# ccData-derived attributes stay as direct fields.
+print(info.natom, info.charge, info.mult)
+print(info.temperature, info.pressure)
+print(info.optdone)
 
 # Computed outputs come from the cclib ccData on `raw`.
 print(result.raw.scfenergies[-1])      # final SCF energy in eV
@@ -46,7 +55,7 @@ print(len(result.raw.vibfreqs))        # number of vibrational modes
 # Parse the canonical log inside a compound directory.
 result = parse_compound(Path("examples/replica/ROSDSFDQCJNGOL-UHFFFAOYSA-O"))
 
-# Serialize the curated namespaces to JSON. `raw` is excluded.
+# Serialize the curated namespace to JSON. `raw` is excluded.
 print(to_json(result))
 ```
 
@@ -63,27 +72,15 @@ gaussian-parse-results --input examples/replica/ROSDSFDQCJNGOL-UHFFFAOYSA-O --no
 gaussian-parse-results --config /abs/path/to/gaussian_batch.toml
 ```
 
-## Curated namespaces
+## `GaussianRunMetadata`
 
-### `run_info` — `GaussianRunInfo`
+Single curated namespace, accessed as `result.run_info`.
 
 | Field | Source |
 |---|---|
 | `source_path` | The parsed log's path. |
-| `package` | `metadata['package']`, e.g. `"Gaussian"`. |
-| `package_version` | `metadata['package_version']`, e.g. `"2016+C.02"`. |
-| `success` | `metadata['success']` (Normal vs Error termination). |
-| `methods` | `metadata['methods']`. |
+| `metadata` | cclib's full `data.metadata` dict, recursively coerced to JSON-safe primitives by `_json_safe.to_json_safe`. Includes `package`, `package_version`, `success`, `methods`, `basis_set`, `cpu_time`, `wall_time`, and any other key cclib populates (e.g. `functional`, `keywords`, `coord_type`, `comments`). `datetime.timedelta` values become ISO 8601 duration strings (`"PT…"`). |
 | `optdone` | `data.optdone`. |
-
-### `run_setup` — `GaussianRunSetup`
-
-Names match cclib's own attribute names so callers can move freely between
-the curated view and `raw`.
-
-| Field | Source / units |
-|---|---|
-| `basis_set` | `metadata['basis_set']`. |
 | `natom` | `data.natom`. |
 | `charge` | `data.charge`. |
 | `mult` | `data.mult` (spin multiplicity). |
@@ -92,7 +89,7 @@ the curated view and `raw`.
 | `temperature` | `data.temperature` (K). |
 | `pressure` | `data.pressure` (atm). |
 
-### Computed outputs (accessed via `result.raw`)
+## Computed outputs (accessed via `result.raw`)
 
 | cclib attribute | Description / units |
 |---|---|
@@ -117,5 +114,8 @@ pytest packages/gaussian_job_results \
     --cov-report=term-missing
 ```
 
-See the design spec at
-`docs/superpowers/specs/2026-04-25-gaussian-job-results-design.md`.
+See the design specs at
+`docs/superpowers/specs/2026-04-25-gaussian-job-results-design.md` (original
+package design) and
+`docs/superpowers/specs/2026-04-25-gaussian-run-info-setup-merge-design.md`
+(this single-namespace refactor).

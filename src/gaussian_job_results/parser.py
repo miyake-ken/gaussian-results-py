@@ -8,13 +8,9 @@ from typing import Any
 import cclib
 from cclib.parser.data import ccData
 
+from ._json_safe import to_json_safe
 from .discovery import find_log_in_compound_dir
-from .result import (
-    GaussianResult,
-    GaussianRunInfo,
-    GaussianRunSetup,
-    GbasisAtom,
-)
+from .result import GaussianResult, GaussianRunMetadata, GbasisAtom
 
 
 def parse_log(path: Path | str) -> GaussianResult:
@@ -49,32 +45,19 @@ def parse_compound(
 
 
 def _build_result(source_path: Path, data: ccData) -> GaussianResult:
-    metadata_dict: dict[str, Any] = getattr(data, "metadata", {}) or {}
     return GaussianResult(
-        run_info=_build_run_info(source_path, data, metadata_dict),
-        run_setup=_build_run_setup(data, metadata_dict),
+        run_info=_build_metadata(source_path, data),
         raw=data,
     )
 
 
-def _build_run_info(
-    source_path: Path, data: ccData, metadata_dict: dict[str, Any]
-) -> GaussianRunInfo:
-    return GaussianRunInfo(
+def _build_metadata(source_path: Path, data: ccData) -> GaussianRunMetadata:
+    raw_metadata: dict[str, Any] = getattr(data, "metadata", {}) or {}
+    coerced_metadata = to_json_safe(raw_metadata)
+    return GaussianRunMetadata(
         source_path=source_path,
-        package=str(metadata_dict.get("package", "")),
-        package_version=_str_or_none(metadata_dict.get("package_version")),
-        success=bool(metadata_dict.get("success", False)),
-        methods=_tuple_of_str(metadata_dict.get("methods")),
+        metadata=coerced_metadata,
         optdone=bool(getattr(data, "optdone", False)),
-    )
-
-
-def _build_run_setup(
-    data: ccData, metadata_dict: dict[str, Any]
-) -> GaussianRunSetup:
-    return GaussianRunSetup(
-        basis_set=_str_or_none(metadata_dict.get("basis_set")),
         natom=int(getattr(data, "natom", 0) or 0),
         charge=_int_or_none(getattr(data, "charge", None)),
         mult=_int_or_none(getattr(data, "mult", None)),
@@ -134,23 +117,3 @@ def _int_or_none(value: Any) -> int | None:
         return int(value)
     except (TypeError, ValueError):
         return None
-
-
-def _str_or_none(value: Any) -> str | None:
-    # Treat empty string as absent — cclib uses "" for unpopulated metadata
-    # (e.g. truncated logs / killed jobs).
-    if value is None:
-        return None
-    text = str(value)
-    return text if text else None
-
-
-def _tuple_of_str(value: Any) -> tuple[str, ...]:
-    if value is None:
-        return ()
-    if isinstance(value, str):
-        return (value,)
-    try:
-        return tuple(str(x) for x in value)
-    except TypeError:
-        return ()

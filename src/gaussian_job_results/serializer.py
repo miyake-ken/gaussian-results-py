@@ -1,9 +1,11 @@
 """JSON serialization for :class:`GaussianResult`.
 
-Every numeric field on the curated dataclasses is already a plain
-Python type (``int`` / ``float`` / nested ``tuple``), so a single pass
-through the standard library ``json`` module is sufficient. The
-``raw`` ``ccData`` attribute is stripped before encoding.
+Every numeric / textual field on :class:`GaussianRunMetadata` is already
+a JSON-safe Python type — primitives, tuples (for ``gbasis`` /
+``scannames``), and a pre-coerced ``metadata`` dict produced by
+:func:`gaussian_job_results._json_safe.to_json_safe`. A single pass
+through the standard library ``json`` module is sufficient. The ``raw``
+``ccData`` attribute is stripped before encoding.
 """
 
 from __future__ import annotations
