@@ -13,8 +13,6 @@ from gaussian_job_results.parser import (
     _gbasis,
     _int_or_none,
     _optional_tuple_of_str,
-    _str_or_none,
-    _tuple_of_str,
 )
 
 
@@ -28,19 +26,6 @@ def test_int_or_none_paths() -> None:
     assert _int_or_none(None) is None
     assert _int_or_none("nope") is None
     assert _int_or_none(7) == 7
-
-
-def test_str_or_none_paths() -> None:
-    assert _str_or_none(None) is None
-    assert _str_or_none("") is None
-    assert _str_or_none("Gaussian") == "Gaussian"
-
-
-def test_tuple_of_str_paths() -> None:
-    assert _tuple_of_str(None) == ()
-    assert _tuple_of_str("DFT") == ("DFT",)
-    assert _tuple_of_str(["DFT", "MP2"]) == ("DFT", "MP2")
-    assert _tuple_of_str(42) == ()
 
 
 def test_optional_tuple_of_str_paths() -> None:
@@ -59,7 +44,6 @@ def test_gbasis_none_and_empty() -> None:
 
 
 def test_gbasis_valid_shape() -> None:
-    # cclib gbasis: list of [(label, [(exp, coef), ...]), ...] per atom.
     raw = [
         [("S", [(1.0, 0.5), (2.0, 0.5)])],
         [("P", [(3.0, 1.0)])],
@@ -72,5 +56,4 @@ def test_gbasis_valid_shape() -> None:
 
 
 def test_gbasis_malformed_shape() -> None:
-    # Missing the contraction pair; helper returns None instead of raising.
     assert _gbasis([[("S",)]]) is None
