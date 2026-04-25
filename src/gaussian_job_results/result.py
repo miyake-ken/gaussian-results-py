@@ -34,7 +34,13 @@ GbasisAtom = tuple[GbasisFunction, ...]
 
 @dataclass(frozen=True)
 class GaussianRunInfo:
-    """Run identity, package, and termination status."""
+    """Run identity, package, and termination status.
+
+    ``package`` is always a ``str`` (never ``None``); when cclib does not
+    populate ``metadata['package']`` it defaults to the empty string ``""``.
+    This asymmetry with ``package_version`` (``str | None``) is intentional
+    and matches the spec — callers can rely on ``package`` being defined.
+    """
 
     source_path: Path
     package: str

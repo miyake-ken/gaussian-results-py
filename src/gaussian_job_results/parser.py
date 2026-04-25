@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 import cclib
+from cclib.parser.data import ccData
 
 from .discovery import find_log_in_compound_dir
 from .result import (
@@ -47,8 +48,8 @@ def parse_compound(
     return parse_log(log_path)
 
 
-def _build_result(source_path: Path, data: Any) -> GaussianResult:
-    metadata_dict = getattr(data, "metadata", {}) or {}
+def _build_result(source_path: Path, data: ccData) -> GaussianResult:
+    metadata_dict: dict[str, Any] = getattr(data, "metadata", {}) or {}
     return GaussianResult(
         run_info=_build_run_info(source_path, data, metadata_dict),
         run_setup=_build_run_setup(data, metadata_dict),
@@ -57,7 +58,7 @@ def _build_result(source_path: Path, data: Any) -> GaussianResult:
 
 
 def _build_run_info(
-    source_path: Path, data: Any, metadata_dict: dict
+    source_path: Path, data: ccData, metadata_dict: dict[str, Any]
 ) -> GaussianRunInfo:
     return GaussianRunInfo(
         source_path=source_path,
@@ -70,7 +71,7 @@ def _build_run_info(
 
 
 def _build_run_setup(
-    data: Any, metadata_dict: dict
+    data: ccData, metadata_dict: dict[str, Any]
 ) -> GaussianRunSetup:
     return GaussianRunSetup(
         basis_set=_str_or_none(metadata_dict.get("basis_set")),
@@ -136,6 +137,8 @@ def _int_or_none(value: Any) -> int | None:
 
 
 def _str_or_none(value: Any) -> str | None:
+    # Treat empty string as absent — cclib uses "" for unpopulated metadata
+    # (e.g. truncated logs / killed jobs).
     if value is None:
         return None
     text = str(value)
