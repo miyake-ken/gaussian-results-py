@@ -1,6 +1,6 @@
 [project]
 name = "gaussian-job-results"
-version = "0.1.0"
+version = "0.1.1"
 description = "Parse GAUSSIAN .out logs into a curated, JSON-serializable result via cclib"
 readme = "README.md"
 authors = [{ name = "kkiyama117", email = "k.kiyama117@gmail.com" }]
@@ -18,7 +18,7 @@ build-backend = "hatchling.build"
 
 [tool.pixi.package]
 name = "gaussian_job_results"
-version = "0.1.0"
+version = "0.1.1"
 
 [tool.pixi.package.build.backend]
 name = "pixi-build-python"
