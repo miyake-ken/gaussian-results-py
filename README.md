@@ -11,9 +11,13 @@ The full `cclib.parser.data.ccData` object stays on `result.raw` as the
 canonical source of computed quantities (final energy, geometry, vibrational
 frequencies, thermochemistry).
 
-The user-facing CLI lives in the sibling [`gaussian_job_cli`](../gaussian_job_cli)
-package as the `gaussian-parse-results` console script (also available as
-`python -m gaussian_job_cli parse-results`).
+The user-facing CLI lives in the sibling
+[`gaussian_job_runtime`](../gaussian_job_runtime) package and is reached
+via `python -m gaussian_job_runtime parse-results`. The legacy
+`gaussian-parse-results` console script (previously shipped by
+`gaussian_job_cli`) was removed in the 2026-04-27 inner-programs
+refactor; the rendered SLURM batch templates already invoke the new
+path.
 
 ## Install
 
@@ -63,13 +67,16 @@ print(to_json(result))
 
 ```bash
 # Single .out file.
-gaussian-parse-results --input examples/replica/ROSDSFDQCJNGOL-UHFFFAOYSA-O/main.out --no-write
+python -m gaussian_job_runtime parse-results \
+    --input examples/replica/ROSDSFDQCJNGOL-UHFFFAOYSA-O/main.out --no-write
 
 # Compound directory.
-gaussian-parse-results --input examples/replica/ROSDSFDQCJNGOL-UHFFFAOYSA-O --no-write
+python -m gaussian_job_runtime parse-results \
+    --input examples/replica/ROSDSFDQCJNGOL-UHFFFAOYSA-O --no-write
 
 # TOML-driven: writes to <PathResolver.target_dir(compound_id)>/result.json.
-gaussian-parse-results --config /abs/path/to/gaussian_batch.toml
+python -m gaussian_job_runtime parse-results \
+    --config /abs/path/to/gaussian_batch.toml
 ```
 
 ## `GaussianRunMetadata`
