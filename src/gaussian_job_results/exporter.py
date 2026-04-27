@@ -18,6 +18,42 @@ class NotConvergedError(ValueError):
     not pass ``allow_incomplete=True``."""
 
 
+def _build_molecule(data: Any, *, allow_incomplete: bool) -> pybel.Molecule:
+    optdone = bool(getattr(data, "optdone", False))
+    if not optdone and not allow_incomplete:
+        raise NotConvergedError(
+            "Gaussian opt did not converge (optdone=False). "
+            "Pass allow_incomplete=True to export the last recorded geometry."
+        )
+
+    atomnos = getattr(data, "atomnos", None)
+    atomcoords = getattr(data, "atomcoords", None)
+    if atomnos is None or atomcoords is None or len(atomcoords) == 0:
+        raise ValueError(
+            "ccData has no atomnos / atomcoords; cannot build mol2 geometry."
+        )
+
+    last_frame = atomcoords[-1]
+    if len(last_frame) != len(atomnos):
+        raise ValueError(
+            f"atomnos / atomcoords length mismatch: "
+            f"{len(atomnos)} vs {len(last_frame)}"
+        )
+
+    obmol = ob.OBMol()
+    obmol.BeginModify()
+    for z, (x, y, z_coord) in zip(atomnos, last_frame, strict=True):
+        atom = obmol.NewAtom()
+        atom.SetAtomicNum(int(z))
+        atom.SetVector(float(x), float(y), float(z_coord))
+    obmol.EndModify()
+
+    obmol.ConnectTheDots()
+    obmol.PerceiveBondOrders()
+
+    return pybel.Molecule(obmol)
+
+
 def result_to_mol2(
     result: GaussianResult,
     output_path: Path | str,
