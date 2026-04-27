@@ -41,7 +41,7 @@ polars = ">=0.20"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
-addopts = "-ra -q"
+addopts = "-ra -q --import-mode=importlib"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/gaussian_job_results"]
