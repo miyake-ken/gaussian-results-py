@@ -29,9 +29,7 @@ def to_json(result: GaussianResult, *, indent: int | None = 2) -> str:
     return json.dumps(_to_serializable(result), indent=indent, sort_keys=True)
 
 
-def write_json(
-    result: GaussianResult, path: Path, *, indent: int | None = 2
-) -> None:
+def write_json(result: GaussianResult, path: Path, *, indent: int | None = 2) -> None:
     """Write a :class:`GaussianResult` as JSON to ``path``.
 
     Parent directories are created on demand (``mkdir(parents=True,

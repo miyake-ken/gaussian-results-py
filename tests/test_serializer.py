@@ -58,9 +58,7 @@ def test_to_json_keys_sorted_recursively(replica_log_path: Path) -> None:
     assert metadata_keys == sorted(metadata_keys)
 
 
-def test_write_json_creates_parent_dirs(
-    tmp_path: Path, replica_log_path: Path
-) -> None:
+def test_write_json_creates_parent_dirs(tmp_path: Path, replica_log_path: Path) -> None:
     result = parse_log(replica_log_path)
     target = tmp_path / "deep" / "nested" / "result.json"
 

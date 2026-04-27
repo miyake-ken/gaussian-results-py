@@ -27,9 +27,7 @@ def parse_log(path: Path | str) -> GaussianResult:
 
     data = cclib.io.ccread(str(log_path))
     if data is None:
-        raise ValueError(
-            f"cclib could not identify {log_path} as a supported QC output"
-        )
+        raise ValueError(f"cclib could not identify {log_path} as a supported QC output")
 
     return _build_result(log_path, data)
 
@@ -77,9 +75,7 @@ def _gbasis(value: Any) -> tuple[GbasisAtom, ...] | None:
             funcs: list[tuple[str, tuple[tuple[float, float], ...]]] = []
             for func in atom_funcs:
                 label = str(func[0])
-                contractions = tuple(
-                    (float(c[0]), float(c[1])) for c in func[1]
-                )
+                contractions = tuple((float(c[0]), float(c[1])) for c in func[1])
                 funcs.append((label, contractions))
             atoms.append(tuple(funcs))
         if not atoms:

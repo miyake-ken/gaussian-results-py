@@ -37,15 +37,12 @@ def find_log_in_compound_dir(
         if candidate.is_file():
             return candidate
 
-    matches = sorted(
-        p for p in compound_dir.glob(log_glob) if p.is_file()
-    )
+    matches = sorted(p for p in compound_dir.glob(log_glob) if p.is_file())
     if len(matches) == 1:
         return matches[0]
     if not matches:
         raise ValueError(
-            f"no log matching {log_glob!r} or {list(preferred_basenames)} "
-            f"under {compound_dir}"
+            f"no log matching {log_glob!r} or {list(preferred_basenames)} under {compound_dir}"
         )
     raise ValueError(
         f"ambiguous log discovery under {compound_dir}: {len(matches)} "
