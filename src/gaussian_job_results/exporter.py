@@ -54,6 +54,19 @@ def _build_molecule(data: Any, *, allow_incomplete: bool) -> pybel.Molecule:
     return pybel.Molecule(obmol)
 
 
+def _write_mol2(molecule: pybel.Molecule, output_path: Path, *, overwrite: bool) -> Path:
+    if output_path.exists() and not overwrite:
+        raise FileExistsError(output_path)
+    tmp = output_path.with_suffix(output_path.suffix + f".tmp-{os.getpid()}")
+    try:
+        molecule.write("mol2", str(tmp), overwrite=True)
+        tmp.replace(output_path)
+    finally:
+        if tmp.exists():
+            tmp.unlink(missing_ok=True)
+    return output_path.resolve()
+
+
 def result_to_mol2(
     result: GaussianResult,
     output_path: Path | str,

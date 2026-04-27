@@ -93,3 +93,52 @@ def test_build_molecule_rejects_length_mismatch():
     )
     with pytest.raises(ValueError, match="length mismatch"):
         _build_molecule(data, allow_incomplete=True)
+
+
+from pathlib import Path
+
+from gaussian_job_results.exporter import _write_mol2
+
+
+def _h2_molecule():
+    return _build_molecule(_h2_stub(), allow_incomplete=False)
+
+
+def test_write_mol2_writes_file_at_path(tmp_path):
+    out = tmp_path / "h2.mol2"
+    written = _write_mol2(_h2_molecule(), out, overwrite=False)
+    assert written == out.resolve()
+    assert out.exists()
+    text = out.read_text()
+    assert "<TRIPOS>MOLECULE" in text
+    assert "<TRIPOS>ATOM" in text
+
+
+def test_write_mol2_refuses_to_overwrite_by_default(tmp_path):
+    out = tmp_path / "exists.mol2"
+    out.write_text("placeholder")
+    with pytest.raises(FileExistsError):
+        _write_mol2(_h2_molecule(), out, overwrite=False)
+    assert out.read_text() == "placeholder"
+
+
+def test_write_mol2_overwrites_when_requested(tmp_path):
+    out = tmp_path / "exists.mol2"
+    out.write_text("placeholder")
+    _write_mol2(_h2_molecule(), out, overwrite=True)
+    assert "<TRIPOS>MOLECULE" in out.read_text()
+
+
+def test_write_mol2_does_not_leave_tmp_file_after_failure(tmp_path, monkeypatch):
+    out = tmp_path / "h2.mol2"
+
+    def boom(self: Path, target: Path) -> Path:
+        raise OSError("simulated rename failure")
+
+    monkeypatch.setattr(Path, "replace", boom)
+    with pytest.raises(OSError, match="simulated"):
+        _write_mol2(_h2_molecule(), out, overwrite=False)
+
+    leftover = list(tmp_path.glob("*.tmp-*"))
+    assert leftover == [], f"tmp file survived: {leftover}"
+    assert not out.exists()
