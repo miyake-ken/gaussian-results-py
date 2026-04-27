@@ -29,10 +29,12 @@ def parse_log(path: Path | str) -> GaussianResult:
     if data is None:
         raise ValueError(f"cclib could not identify {log_path} as a supported QC output")
 
-    package = (getattr(data, "metadata", None) or {}).get("package")
+    raw_meta = getattr(data, "metadata", None)
+    package = raw_meta.get("package") if isinstance(raw_meta, dict) else None
     if not package:
         raise ValueError(
-            f"cclib could not identify {log_path} as a supported QC output"
+            f"cclib parsed {log_path} but could not identify the QC package "
+            "(no metadata.package; likely an unsupported log format)"
         )
 
     return _build_result(log_path, data)
