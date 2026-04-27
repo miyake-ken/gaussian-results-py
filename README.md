@@ -126,3 +126,32 @@ See the design specs at
 package design) and
 `docs/superpowers/specs/2026-04-25-gaussian-run-info-setup-merge-design.md`
 (this single-namespace refactor).
+
+## Exporter
+
+`gaussian_job_results.exporter` writes a parsed result as a Tripos `.mol2`
+geometry file via OpenBabel. The library exposes two entry points:
+
+```python
+from gaussian_job_results import export_mol2, parse_log, result_to_mol2
+
+# One-shot from a path
+export_mol2("/abs/path/to/main.out", "/abs/path/to/main.mol2")
+
+# Reuse an already-parsed GaussianResult
+result = parse_log("/abs/path/to/main.out")
+result_to_mol2(result, "/abs/path/to/main.mol2")
+```
+
+Both write the **last recorded geometry** (`atomcoords[-1]`) with
+OpenBabel-perceived bonds. Pass `allow_incomplete=True` to write
+non-converged opts; `overwrite=True` to replace an existing file.
+
+If the run did not converge and `allow_incomplete=False` (default), the
+functions raise `gaussian_job_results.NotConvergedError` (a `ValueError`
+subclass).
+
+The Mulliken charges, total charge/spin, and Gaussian title carried by
+OpenBabel's native `pybel.readfile("g09", ...)` reader are intentionally
+not preserved — see `docs/todos.md` ("Pre-implementation notes — out → mol2
+export") for the deferred follow-ups.
