@@ -91,4 +91,11 @@ def export_mol2(
     allow_incomplete: bool = False,
     overwrite: bool = False,
 ) -> Path:
-    raise NotImplementedError
+    """Convenience: ``parse_log(log_path)`` then ``result_to_mol2``."""
+    result = parse_log(log_path)
+    return result_to_mol2(
+        result,
+        output_path,
+        allow_incomplete=allow_incomplete,
+        overwrite=overwrite,
+    )

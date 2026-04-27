@@ -247,3 +247,24 @@ def test_result_to_mol2_overwrites_when_requested(tmp_path):
     result = _result_from_stub(_h2_stub())
     result_to_mol2(result, out, overwrite=True)
     assert "<TRIPOS>MOLECULE" in out.read_text()
+
+
+from gaussian_job_results.exporter import export_mol2
+
+
+def test_export_mol2_matches_result_to_mol2(tmp_path, replica_log_path):
+    via_path = tmp_path / "viapath.mol2"
+    via_result = tmp_path / "viaresult.mol2"
+
+    export_mol2(replica_log_path, via_path)
+    result_to_mol2(parse_log(replica_log_path), via_result)
+
+    assert _parse_mol2_atoms(via_path.read_text()) == _parse_mol2_atoms(
+        via_result.read_text()
+    )
+
+
+def test_export_mol2_raises_for_missing_log(tmp_path):
+    out = tmp_path / "x.mol2"
+    with pytest.raises(FileNotFoundError):
+        export_mol2(tmp_path / "does-not-exist.out", out)
