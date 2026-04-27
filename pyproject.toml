@@ -37,6 +37,7 @@ gaussian_job_config = "*"
 cclib = ">=1.7,<2"
 whenever = ">=0.6,<1"
 polars = ">=0.20"
+openbabel = ">=3.1"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
