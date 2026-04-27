@@ -74,7 +74,14 @@ def result_to_mol2(
     allow_incomplete: bool = False,
     overwrite: bool = False,
 ) -> Path:
-    raise NotImplementedError
+    """Write the optimized geometry of ``result`` as a Tripos mol2 file.
+
+    See ``docs/superpowers/specs/2026-04-27-out-to-mol2-export-design.md``
+    section 4.1 for the full contract.
+    """
+    out = Path(output_path)
+    molecule = _build_molecule(result.raw, allow_incomplete=allow_incomplete)
+    return _write_mol2(molecule, out, overwrite=overwrite)
 
 
 def export_mol2(

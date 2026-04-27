@@ -142,3 +142,108 @@ def test_write_mol2_does_not_leave_tmp_file_after_failure(tmp_path, monkeypatch)
     leftover = list(tmp_path.glob("*.tmp-*"))
     assert leftover == [], f"tmp file survived: {leftover}"
     assert not out.exists()
+
+
+from gaussian_job_results import GaussianResult, parse_log
+from gaussian_job_results.exporter import result_to_mol2
+from gaussian_job_results.result import GaussianRunMetadata
+
+
+def _result_from_stub(data: _StubCcData) -> GaussianResult:
+    return GaussianResult(
+        run_info=GaussianRunMetadata(
+            source_path=Path("/dev/null"),
+            metadata={},
+            optdone=data.optdone,
+            natom=int(len(data.atomnos)),
+            charge=None,
+            mult=None,
+            gbasis=None,
+            scannames=None,
+            temperature=None,
+            pressure=None,
+        ),
+        raw=data,
+    )
+
+
+def _parse_mol2_atoms(text: str) -> list[tuple[str, float, float, float]]:
+    """Pull (symbol, x, y, z) tuples from the <TRIPOS>ATOM section."""
+    atoms: list[tuple[str, float, float, float]] = []
+    in_atom = False
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("@<TRIPOS>"):
+            in_atom = stripped == "@<TRIPOS>ATOM"
+            continue
+        if not in_atom or not stripped:
+            continue
+        parts = stripped.split()
+        atom_name = parts[1]
+        symbol = "".join(ch for ch in atom_name if ch.isalpha())
+        atoms.append((symbol, float(parts[2]), float(parts[3]), float(parts[4])))
+    return atoms
+
+
+def test_result_to_mol2_writes_file(tmp_path, replica_log_path):
+    out = tmp_path / "main.mol2"
+    written = result_to_mol2(parse_log(replica_log_path), out)
+    assert written == out.resolve()
+    assert out.exists()
+    text = out.read_text()
+    assert "<TRIPOS>MOLECULE" in text
+    assert "<TRIPOS>ATOM" in text
+    assert "<TRIPOS>BOND" in text
+
+
+def test_result_to_mol2_atom_count_matches_natom(tmp_path, replica_log_path):
+    out = tmp_path / "main.mol2"
+    result = parse_log(replica_log_path)
+    result_to_mol2(result, out)
+    atoms = _parse_mol2_atoms(out.read_text())
+    assert len(atoms) == result.run_info.natom
+
+
+def test_result_to_mol2_coords_match_last_frame(tmp_path, replica_log_path):
+    out = tmp_path / "main.mol2"
+    result = parse_log(replica_log_path)
+    result_to_mol2(result, out)
+
+    written_atoms = _parse_mol2_atoms(out.read_text())
+    last = result.raw.atomcoords[-1]
+    for (sym, x, y, z), (rx, ry, rz) in zip(written_atoms, last, strict=True):
+        assert abs(x - rx) <= 1e-4
+        assert abs(y - ry) <= 1e-4
+        assert abs(z - rz) <= 1e-4
+
+
+def test_result_to_mol2_raises_when_not_converged(tmp_path):
+    out = tmp_path / "h2.mol2"
+    result = _result_from_stub(_h2_stub(optdone=False))
+    with pytest.raises(NotConvergedError):
+        result_to_mol2(result, out)
+    assert not out.exists()
+
+
+def test_result_to_mol2_allow_incomplete_writes(tmp_path):
+    out = tmp_path / "h2.mol2"
+    result = _result_from_stub(_h2_stub(optdone=False))
+    result_to_mol2(result, out, allow_incomplete=True)
+    assert out.exists()
+
+
+def test_result_to_mol2_raises_on_existing_output(tmp_path):
+    out = tmp_path / "h2.mol2"
+    out.write_text("existing")
+    result = _result_from_stub(_h2_stub())
+    with pytest.raises(FileExistsError):
+        result_to_mol2(result, out)
+    assert out.read_text() == "existing"
+
+
+def test_result_to_mol2_overwrites_when_requested(tmp_path):
+    out = tmp_path / "h2.mol2"
+    out.write_text("existing")
+    result = _result_from_stub(_h2_stub())
+    result_to_mol2(result, out, overwrite=True)
+    assert "<TRIPOS>MOLECULE" in out.read_text()
