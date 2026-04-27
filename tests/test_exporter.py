@@ -268,3 +268,14 @@ def test_export_mol2_raises_for_missing_log(tmp_path):
     out = tmp_path / "x.mol2"
     with pytest.raises(FileNotFoundError):
         export_mol2(tmp_path / "does-not-exist.out", out)
+
+
+def test_top_level_imports_expose_exporter_symbols():
+    import gaussian_job_results as g
+
+    assert g.NotConvergedError is not None
+    assert g.result_to_mol2 is not None
+    assert g.export_mol2 is not None
+    assert "NotConvergedError" in g.__all__
+    assert "result_to_mol2" in g.__all__
+    assert "export_mol2" in g.__all__
