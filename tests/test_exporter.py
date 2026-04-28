@@ -279,3 +279,103 @@ def test_top_level_imports_expose_exporter_symbols():
     assert "NotConvergedError" in g.__all__
     assert "result_to_mol2" in g.__all__
     assert "export_mol2" in g.__all__
+
+
+def _h2_stub_with_charges(charges_dict: dict) -> _StubCcData:
+    stub = _h2_stub()
+    stub.atomcharges = charges_dict
+    return stub
+
+
+def test_build_molecule_default_auto_with_no_atomcharges_skips_partial():
+    """Backward-compat: stub without atomcharges + default charge_source must
+    leave PartialChargesPerceived False (so mol2 falls back to Gasteiger)."""
+    mol = _build_molecule(_h2_stub(), allow_incomplete=False)
+    assert mol.OBMol.HasPartialChargesPerceived() is False
+
+
+def test_build_molecule_charge_source_esp_sets_user_charges():
+    data = _h2_stub_with_charges({"esp": np.array([-0.5, 0.5])})
+    mol = _build_molecule(data, allow_incomplete=False, charge_source="esp")
+    assert mol.OBMol.HasPartialChargesPerceived() is True
+    atoms = list(mol.atoms)
+    assert atoms[0].partialcharge == pytest.approx(-0.5)
+    assert atoms[1].partialcharge == pytest.approx(0.5)
+
+
+def test_build_molecule_charge_source_auto_prefers_esp_over_mulliken():
+    data = _h2_stub_with_charges(
+        {
+            "esp": np.array([-0.1, 0.1]),
+            "mulliken": np.array([-0.9, 0.9]),
+        }
+    )
+    mol = _build_molecule(data, allow_incomplete=False, charge_source="auto")
+    atoms = list(mol.atoms)
+    assert atoms[0].partialcharge == pytest.approx(-0.1)
+
+
+def test_build_molecule_charge_source_auto_falls_back_to_mulliken():
+    data = _h2_stub_with_charges({"mulliken": np.array([-0.3, 0.3])})
+    mol = _build_molecule(data, allow_incomplete=False, charge_source="auto")
+    atoms = list(mol.atoms)
+    assert atoms[0].partialcharge == pytest.approx(-0.3)
+
+
+def test_build_molecule_charge_source_none_skips_partial_charges():
+    data = _h2_stub_with_charges({"esp": np.array([-0.5, 0.5])})
+    mol = _build_molecule(data, allow_incomplete=False, charge_source="none")
+    assert mol.OBMol.HasPartialChargesPerceived() is False
+
+
+def test_build_molecule_charge_source_explicit_missing_raises():
+    """Asking for ESP when the log has no ESP block must fail loudly."""
+    data = _h2_stub_with_charges({"mulliken": np.array([-0.3, 0.3])})
+    with pytest.raises(ValueError, match="esp"):
+        _build_molecule(data, allow_incomplete=False, charge_source="esp")
+
+
+def test_build_molecule_charge_source_invalid_raises():
+    with pytest.raises(ValueError, match="charge_source"):
+        _build_molecule(_h2_stub(), allow_incomplete=False, charge_source="bogus")
+
+
+def test_build_molecule_length_mismatch_in_charges_raises():
+    data = _h2_stub_with_charges({"esp": np.array([-0.5, 0.5, 0.0])})
+    with pytest.raises(ValueError, match="length"):
+        _build_molecule(data, allow_incomplete=False, charge_source="esp")
+
+
+def test_result_to_mol2_writes_user_charges_for_real_log(tmp_path, replica_log_path):
+    out = tmp_path / "main.mol2"
+    result_to_mol2(parse_log(replica_log_path), out, charge_source="esp")
+    text = out.read_text()
+    assert "USER_CHARGES" in text
+    atom_lines = []
+    in_atom = False
+    for line in text.splitlines():
+        s = line.strip()
+        if s.startswith("@<TRIPOS>"):
+            in_atom = s == "@<TRIPOS>ATOM"
+            continue
+        if in_atom and s:
+            atom_lines.append(s)
+    parts = atom_lines[0].split()
+    assert float(parts[-1]) == pytest.approx(-0.0999, abs=1e-4)
+
+
+def test_result_to_mol2_default_auto_picks_esp_for_real_log(tmp_path, replica_log_path):
+    out = tmp_path / "main.mol2"
+    result_to_mol2(parse_log(replica_log_path), out)
+    text = out.read_text()
+    assert "USER_CHARGES" in text
+
+
+def test_result_to_mol2_charge_source_none_emits_default_gasteiger(
+    tmp_path, replica_log_path
+):
+    out = tmp_path / "main.mol2"
+    result_to_mol2(parse_log(replica_log_path), out, charge_source="none")
+    text = out.read_text()
+    assert "USER_CHARGES" not in text
+    assert "GASTEIGER" in text

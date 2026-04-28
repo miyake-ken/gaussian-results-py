@@ -151,7 +151,38 @@ If the run did not converge and `allow_incomplete=False` (default), the
 functions raise `gaussian_job_results.NotConvergedError` (a `ValueError`
 subclass).
 
-The Mulliken charges, total charge/spin, and Gaussian title carried by
-OpenBabel's native `pybel.readfile("g09", ...)` reader are intentionally
-not preserved — see `docs/todos.md` ("Pre-implementation notes — out → mol2
-export") for the deferred follow-ups.
+### Partial charges (`charge_source`)
+
+Both entry points accept a `charge_source` kwarg controlling the
+partial-charge column of the Tripos `<TRIPOS>ATOM` block:
+
+| Value | Behavior | mol2 charge_type |
+|---|---|---|
+| `"auto"` (default) | ESP if present in the log, else Mulliken, else fall through to OpenBabel's perceived charges. | `USER_CHARGES` (when ESP/Mulliken found) or `GASTEIGER` |
+| `"esp"` | Require the `ESP charges:` block from `Pop=MK`. Raises `ValueError` if missing. | `USER_CHARGES` (label: `"ESP"`) |
+| `"mulliken"` | Use cclib's `atomcharges["mulliken"]`. Raises if missing. | `USER_CHARGES` (label: `"Mulliken"`) |
+| `"none"` | Never inject; OpenBabel emits its default Gasteiger charges. | `GASTEIGER` |
+
+```python
+result_to_mol2(result, "/abs/path/to/main.mol2", charge_source="esp")
+```
+
+**ESP, NOT RESP.** `"esp"` is the Merz-Kollman ESP fit produced by Gaussian
+(`Pop=MK`). Restrained ESP (RESP, Bayly et al.) is a separate two-stage
+fit performed by AmberTools `antechamber -c resp` / `resp` on top of
+Gaussian's ESP grid; it is not produced by Gaussian alone and is out of
+scope for this exporter (see `docs/todos.md` for the trigger condition).
+
+**Two cclib quirks worth noting:**
+
+1. cclib 1.8.x silently drops the `ESP charges:` block for G16 logs; we
+   recover it via the in-package self-parser
+   `gaussian_job_results.partial_charges` and inject it into
+   `data.atomcharges["esp"]` at parse time.
+2. When the route line includes `Pop=MBS`, cclib's
+   `atomcharges["mulliken"]` is the MBS-Mulliken variant (modified basis
+   set), not the standard Mulliken. We do not override cclib's choice.
+
+The total charge / multiplicity, molecule title, and orientation knob are
+still deferred — see `docs/todos.md` ("Pre-implementation notes — out →
+mol2 export") for the trigger conditions.

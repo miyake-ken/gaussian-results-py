@@ -89,3 +89,18 @@ def test_metadata_is_a_fresh_dict(replica_log_path: Path) -> None:
     result.run_info.metadata["package"] = "MUTATED"
     second = parse_log(replica_log_path)
     assert second.run_info.metadata["package"] == "Gaussian"
+
+
+def test_parse_log_merges_self_parsed_esp_into_atomcharges(
+    replica_log_path: Path,
+) -> None:
+    """cclib 1.8.x drops the ESP block for our G16 fixture; parser.parse_log
+    must recover it via the self-parser so downstream callers can reach
+    ``raw.atomcharges["esp"]`` uniformly."""
+    result = parse_log(replica_log_path)
+    atomcharges = result.raw.atomcharges
+    assert "esp" in atomcharges
+    esp = atomcharges["esp"]
+    assert len(esp) == result.run_info.natom
+    assert float(esp[0]) == pytest.approx(-0.099950, abs=1e-6)
+    assert "mulliken" in atomcharges
