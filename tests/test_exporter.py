@@ -3,24 +3,26 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 
 import numpy as np
 import pytest
 
+from gaussian_job_results import GaussianResult
+from gaussian_job_results.exporter import (
+    NotConvergedError,
+    _build_molecule,
+    _write_mol2,
+    export_mol2,
+    result_to_mol2,
+)
+from gaussian_job_results.result import GaussianRunMetadata
+
 
 def test_exporter_module_exposes_public_symbols():
-    from gaussian_job_results.exporter import (
-        NotConvergedError,
-        export_mol2,
-        result_to_mol2,
-    )
-
     assert issubclass(NotConvergedError, ValueError)
     assert callable(result_to_mol2)
     assert callable(export_mol2)
-
-
-from gaussian_job_results.exporter import NotConvergedError, _build_molecule
 
 
 @dataclass
@@ -95,11 +97,6 @@ def test_build_molecule_rejects_length_mismatch():
         _build_molecule(data, allow_incomplete=True)
 
 
-from pathlib import Path
-
-from gaussian_job_results.exporter import _write_mol2
-
-
 def _h2_molecule():
     return _build_molecule(_h2_stub(), allow_incomplete=False)
 
@@ -142,11 +139,6 @@ def test_write_mol2_does_not_leave_tmp_file_after_failure(tmp_path, monkeypatch)
     leftover = list(tmp_path.glob("*.tmp-*"))
     assert leftover == [], f"tmp file survived: {leftover}"
     assert not out.exists()
-
-
-from gaussian_job_results import GaussianResult, parse_log
-from gaussian_job_results.exporter import result_to_mol2
-from gaussian_job_results.result import GaussianRunMetadata
 
 
 def _result_from_stub(data: _StubCcData) -> GaussianResult:
@@ -245,9 +237,6 @@ def test_result_to_mol2_overwrites_when_requested(tmp_path):
     result = _result_from_stub(_h2_stub())
     result_to_mol2(result, out, overwrite=True)
     assert "<TRIPOS>MOLECULE" in out.read_text()
-
-
-from gaussian_job_results.exporter import export_mol2
 
 
 def test_export_mol2_matches_result_to_mol2(tmp_path, replica_log_path, replica_result):
