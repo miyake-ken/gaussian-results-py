@@ -1,48 +1,67 @@
-[project]
-name = "gaussian-job-results"
-version = "0.1.1"
-description = "Parse GAUSSIAN .out logs into a curated, JSON-serializable result via cclib"
-readme = "README.md"
-authors = [{ name = "kkiyama117", email = "k.kiyama117@gmail.com" }]
-requires-python = ">=3.12"
-dependencies = [
-    "gaussian_job_config",
-    "cclib>=1.7,<2",
-    "whenever>=0.6,<1",
-    "polars>=0.20",
-]
-
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling>=1.21"]
 build-backend = "hatchling.build"
 
-[tool.pixi.package]
+[project]
 name = "gaussian_job_results"
-version = "0.1.1"
-
-[tool.pixi.package.build.backend]
-name = "pixi-build-python"
-version = "*"
-channels = [
-  "https://prefix.dev/pixi-build-backends",
-  "https://prefix.dev/conda-forge",
+version = "0.1.0"
+description = "Parse a Gaussian .out log into a structured result and export the optimized geometry as a Tripos .mol2 (with optional ESP/Mulliken charges)."
+readme = "README.md"
+license = "MIT"
+authors = [{ name = "Kiyama Hiroshi", email = "k.kiyama117@gmail.com" }]
+requires-python = ">=3.12,<3.13"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Chemistry",
+    "Typing :: Typed",
 ]
 
-[tool.pixi.package.host-dependencies]
-hatchling = "*"
+dependencies = [
+    "cclib>=1.8",
+    "whenever>=0.6,<1",
+]
 
-[tool.pixi.package.run-dependencies]
-python = ">=3.12"
-gaussian_job_config = "*"
-cclib = ">=1.7,<2"
-whenever = ">=0.6,<1"
-polars = ">=0.20"
-openbabel = ">=3.1"
+[project.optional-dependencies]
+# OpenBabel ships only via conda-forge in practice. Pip installs may need
+# the user to provide it through their environment (system pkg, conda, etc.)
+openbabel = ["openbabel-wheel>=3.1; platform_system != 'Windows'"]
 
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-pythonpath = ["src"]
-addopts = "-ra -q --import-mode=importlib"
+# `[fixtures]` ships the replica .out fixture so downstream test suites
+# (e.g. gaussian_job_cli, gaussian_job_runtime) can import it via
+# gaussian_job_results.fixtures.replica_log_path() instead of reaching
+# into a workspace-relative path.
+fixtures = []
+
+[project.urls]
+Homepage = "https://github.com/miyake-ken/gaussian-results-py"
+Source = "https://github.com/miyake-ken/gaussian-results-py"
+Issues = "https://github.com/miyake-ken/gaussian-results-py/issues"
+Changelog = "https://github.com/miyake-ken/gaussian-results-py/blob/main/CHANGELOG.md"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/gaussian_job_results"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"tests/fixtures/replica" = "src/gaussian_job_results/_fixtures/replica"
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "src/",
+    "tests/",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md",
+    "pyproject.toml",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
