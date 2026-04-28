@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash -el {0}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Micromamba
+        uses: mamba-org/setup-micromamba@v1
+        with:
+          environment-name: gaussian-results-ci
+          create-args: >-
+            python=3.12
+            openbabel=3.1
+            numpy>=1.26
+            cclib>=1.8
+            whenever>=0.6,<1
+            pytest>=8
+            pytest-cov>=5
+            ruff>=0.6
+          cache-environment: true
+
+      - name: Install package (editable)
+        run: pip install -e . --no-deps
+
+      - name: Ruff format check
+        run: ruff format --check .
+
+      - name: Ruff lint
+        run: ruff check .
+
+      - name: Pytest with coverage
+        run: pytest tests --cov=gaussian_job_results --cov-report=term-missing
