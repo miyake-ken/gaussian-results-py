@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Documented conda-forge as the canonical install path. PyPI is
+  intentionally not used; install from a GitHub release tarball is the
+  fallback while the conda-forge feedstock is in review.
+
 ### Fixed
 
 - Declare `polars>=1.0` as a runtime dependency. The package's

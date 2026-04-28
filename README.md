@@ -18,13 +18,19 @@ rendered SLURM batch templates already invoke the new path.
 
 ## Install
 
-```bash
-# conda-forge (recommended; pulls openbabel cleanly)
-conda install -c conda-forge gaussian_job_results
+Recommended:
 
-# pip (install OpenBabel separately first)
-pip install gaussian_job_results[openbabel]
-```
+    # via conda-forge (pulls openbabel cleanly as a runtime dep)
+    conda install -c conda-forge gaussian-job-results
+
+Until the conda-forge feedstock lands, install from a GitHub release tarball:
+
+    # OpenBabel must be available in your environment first
+    # (e.g. `conda install -c conda-forge openbabel` or distro-specific package).
+    # Then:
+    pip install "git+https://github.com/miyake-ken/gaussian-results-py.git@v0.1.0"
+
+PyPI is intentionally not used as a distribution channel for this package — `gaussian-results-py` may be subdivided or merged with sibling packages in the future, and a published-then-yanked PyPI history is awkward to manage. The conda-forge feedstock and the GitHub releases are the supported install paths.
 
 ## Usage (Python API)
 
