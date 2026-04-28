@@ -11,23 +11,20 @@ The full `cclib.parser.data.ccData` object stays on `result.raw` as the
 canonical source of computed quantities (final energy, geometry, vibrational
 frequencies, thermochemistry).
 
-The user-facing CLI lives in the sibling
-[`gaussian_job_runtime`](../gaussian_job_runtime) package and is reached
-via `python -m gaussian_job_runtime parse-results`. The legacy
-`gaussian-parse-results` console script (previously shipped by
-`gaussian_job_cli`) was removed in the 2026-04-27 inner-programs
-refactor; the rendered SLURM batch templates already invoke the new
-path.
+The user-facing CLI is reached via `python -m gaussian_job_runtime parse-results`
+(see the `gaussian_job_runtime` package). The legacy `gaussian-parse-results`
+console script was removed in the 2026-04-27 inner-programs refactor; the
+rendered SLURM batch templates already invoke the new path.
 
 ## Install
 
-From the repository root:
-
 ```bash
-pixi install
-```
+# conda-forge (recommended; pulls openbabel cleanly)
+conda install -c conda-forge gaussian_job_results
 
-The package is registered as a path-dep in the workspace `pixi.toml`.
+# pip (install OpenBabel separately first)
+pip install gaussian_job_results[openbabel]
+```
 
 ## Usage (Python API)
 
@@ -116,16 +113,14 @@ or layer their own serializer on top.
 ## Tests
 
 ```bash
-pytest packages/gaussian_job_results \
+pytest tests \
     --cov=gaussian_job_results \
     --cov-report=term-missing
 ```
 
-See the design specs at
-`docs/superpowers/specs/2026-04-25-gaussian-job-results-design.md` (original
-package design) and
-`docs/superpowers/specs/2026-04-25-gaussian-run-info-setup-merge-design.md`
-(this single-namespace refactor).
+### Fixtures
+
+`gaussian_job_results.fixtures.replica_dir()` and `replica_log_path()` return on-disk paths to a bundled replica `.out` log used as a regression fixture. Downstream test suites can opt into this by declaring `gaussian_job_results[fixtures]` as a dev-time dependency.
 
 ## Exporter
 
