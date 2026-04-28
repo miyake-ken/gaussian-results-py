@@ -52,15 +52,12 @@ def _build_molecule(
     atomnos = getattr(data, "atomnos", None)
     atomcoords = getattr(data, "atomcoords", None)
     if atomnos is None or atomcoords is None or len(atomcoords) == 0:
-        raise ValueError(
-            "ccData has no atomnos / atomcoords; cannot build mol2 geometry."
-        )
+        raise ValueError("ccData has no atomnos / atomcoords; cannot build mol2 geometry.")
 
     last_frame = atomcoords[-1]
     if len(last_frame) != len(atomnos):
         raise ValueError(
-            f"atomnos / atomcoords length mismatch: "
-            f"{len(atomnos)} vs {len(last_frame)}"
+            f"atomnos / atomcoords length mismatch: {len(atomnos)} vs {len(last_frame)}"
         )
 
     resolved = _resolve_charges(data, charge_source, expected_natom=len(atomnos))
@@ -132,9 +129,7 @@ def _resolve_charges(
 def _write_mol2(molecule: pybel.Molecule, output_path: Path, *, overwrite: bool) -> Path:
     if output_path.exists() and not overwrite:
         raise FileExistsError(output_path)
-    tmp = output_path.with_suffix(
-        output_path.suffix + f".tmp-{os.getpid()}-{uuid.uuid4().hex[:8]}"
-    )
+    tmp = output_path.with_suffix(output_path.suffix + f".tmp-{os.getpid()}-{uuid.uuid4().hex[:8]}")
     try:
         molecule.write("mol2", str(tmp), overwrite=True)
         tmp.replace(output_path)

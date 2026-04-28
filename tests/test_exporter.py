@@ -63,8 +63,8 @@ def test_build_molecule_uses_last_frame():
         atomnos=np.array([1, 1], dtype=int),
         atomcoords=np.array(
             [
-                [[0.0, 0.0, 0.0], [0.0, 0.0, 1.50]],   # initial
-                [[0.0, 0.0, 0.0], [0.0, 0.0, 0.74]],   # last (used)
+                [[0.0, 0.0, 0.0], [0.0, 0.0, 1.50]],  # initial
+                [[0.0, 0.0, 0.0], [0.0, 0.0, 0.74]],  # last (used)
             ],
             dtype=float,
         ),
@@ -79,7 +79,7 @@ def test_build_molecule_uses_last_frame():
 
 def test_build_molecule_rejects_missing_atoms():
     data = _StubCcData(
-        atomnos=None,           # type: ignore[arg-type]
+        atomnos=None,  # type: ignore[arg-type]
         atomcoords=np.array([], dtype=float),
     )
     with pytest.raises(ValueError, match="atomnos"):
@@ -185,9 +185,9 @@ def _parse_mol2_atoms(text: str) -> list[tuple[str, float, float, float]]:
     return atoms
 
 
-def test_result_to_mol2_writes_file(tmp_path, replica_log_path):
+def test_result_to_mol2_writes_file(tmp_path, replica_result):
     out = tmp_path / "main.mol2"
-    written = result_to_mol2(parse_log(replica_log_path), out)
+    written = result_to_mol2(replica_result, out)
     assert written == out.resolve()
     assert out.exists()
     text = out.read_text()
@@ -196,21 +196,19 @@ def test_result_to_mol2_writes_file(tmp_path, replica_log_path):
     assert "<TRIPOS>BOND" in text
 
 
-def test_result_to_mol2_atom_count_matches_natom(tmp_path, replica_log_path):
+def test_result_to_mol2_atom_count_matches_natom(tmp_path, replica_result):
     out = tmp_path / "main.mol2"
-    result = parse_log(replica_log_path)
-    result_to_mol2(result, out)
+    result_to_mol2(replica_result, out)
     atoms = _parse_mol2_atoms(out.read_text())
-    assert len(atoms) == result.run_info.natom
+    assert len(atoms) == replica_result.run_info.natom
 
 
-def test_result_to_mol2_coords_match_last_frame(tmp_path, replica_log_path):
+def test_result_to_mol2_coords_match_last_frame(tmp_path, replica_result):
     out = tmp_path / "main.mol2"
-    result = parse_log(replica_log_path)
-    result_to_mol2(result, out)
+    result_to_mol2(replica_result, out)
 
     written_atoms = _parse_mol2_atoms(out.read_text())
-    last = result.raw.atomcoords[-1]
+    last = replica_result.raw.atomcoords[-1]
     for (sym, x, y, z), (rx, ry, rz) in zip(written_atoms, last, strict=True):
         assert abs(x - rx) <= 1e-4
         assert abs(y - ry) <= 1e-4
@@ -252,16 +250,14 @@ def test_result_to_mol2_overwrites_when_requested(tmp_path):
 from gaussian_job_results.exporter import export_mol2
 
 
-def test_export_mol2_matches_result_to_mol2(tmp_path, replica_log_path):
+def test_export_mol2_matches_result_to_mol2(tmp_path, replica_log_path, replica_result):
     via_path = tmp_path / "viapath.mol2"
     via_result = tmp_path / "viaresult.mol2"
 
     export_mol2(replica_log_path, via_path)
-    result_to_mol2(parse_log(replica_log_path), via_result)
+    result_to_mol2(replica_result, via_result)
 
-    assert _parse_mol2_atoms(via_path.read_text()) == _parse_mol2_atoms(
-        via_result.read_text()
-    )
+    assert _parse_mol2_atoms(via_path.read_text()) == _parse_mol2_atoms(via_result.read_text())
 
 
 def test_export_mol2_raises_for_missing_log(tmp_path):
@@ -346,9 +342,9 @@ def test_build_molecule_length_mismatch_in_charges_raises():
         _build_molecule(data, allow_incomplete=False, charge_source="esp")
 
 
-def test_result_to_mol2_writes_user_charges_for_real_log(tmp_path, replica_log_path):
+def test_result_to_mol2_writes_user_charges_for_real_log(tmp_path, replica_result):
     out = tmp_path / "main.mol2"
-    result_to_mol2(parse_log(replica_log_path), out, charge_source="esp")
+    result_to_mol2(replica_result, out, charge_source="esp")
     text = out.read_text()
     assert "USER_CHARGES" in text
     atom_lines = []
@@ -364,18 +360,16 @@ def test_result_to_mol2_writes_user_charges_for_real_log(tmp_path, replica_log_p
     assert float(parts[-1]) == pytest.approx(-0.0999, abs=1e-4)
 
 
-def test_result_to_mol2_default_auto_picks_esp_for_real_log(tmp_path, replica_log_path):
+def test_result_to_mol2_default_auto_picks_esp_for_real_log(tmp_path, replica_result):
     out = tmp_path / "main.mol2"
-    result_to_mol2(parse_log(replica_log_path), out)
+    result_to_mol2(replica_result, out)
     text = out.read_text()
     assert "USER_CHARGES" in text
 
 
-def test_result_to_mol2_charge_source_none_emits_default_gasteiger(
-    tmp_path, replica_log_path
-):
+def test_result_to_mol2_charge_source_none_emits_default_gasteiger(tmp_path, replica_result):
     out = tmp_path / "main.mol2"
-    result_to_mol2(parse_log(replica_log_path), out, charge_source="none")
+    result_to_mol2(replica_result, out, charge_source="none")
     text = out.read_text()
     assert "USER_CHARGES" not in text
     assert "GASTEIGER" in text

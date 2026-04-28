@@ -19,9 +19,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-_ATOM_LINE_RE = re.compile(
-    r"^\s*\d+\s+[A-Z][a-z]?\s+(-?\d+\.\d+)\s*$"
-)
+_ATOM_LINE_RE = re.compile(r"^\s*\d+\s+[A-Z][a-z]?\s+(-?\d+\.\d+)\s*$")
 
 _HEADERS: dict[str, str] = {
     "ESP charges:": "esp",
