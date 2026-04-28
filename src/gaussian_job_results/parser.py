@@ -6,10 +6,12 @@ from pathlib import Path
 from typing import Any
 
 import cclib
+import numpy as np
 from cclib.parser.data import ccData
 
 from ._json_safe import to_json_safe
 from .discovery import find_log_in_compound_dir
+from .partial_charges import parse_partial_charges_from_log
 from .result import GaussianResult, GaussianRunMetadata, GbasisAtom
 
 
@@ -37,7 +39,23 @@ def parse_log(path: Path | str) -> GaussianResult:
             "(no metadata.package; likely an unsupported log format)"
         )
 
+    _merge_self_parsed_charges(data, log_path)
     return _build_result(log_path, data)
+
+
+def _merge_self_parsed_charges(data: ccData, log_path: Path) -> None:
+    """Add charge keys cclib drops (e.g. ``esp`` for G16 Pop=MK) onto
+    ``data.atomcharges`` without overwriting keys cclib already provides.
+    """
+    self_parsed = parse_partial_charges_from_log(log_path)
+    if not self_parsed:
+        return
+    atomcharges = getattr(data, "atomcharges", None)
+    if atomcharges is None:
+        atomcharges = {}
+        data.atomcharges = atomcharges
+    for key, values in self_parsed.items():
+        atomcharges.setdefault(key, np.asarray(values, dtype=float))
 
 
 def parse_compound(

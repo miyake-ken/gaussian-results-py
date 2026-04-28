@@ -14,8 +14,8 @@ from gaussian_job_results import (
 )
 
 
-def test_parse_log_normal_termination(replica_log_path: Path) -> None:
-    result = parse_log(replica_log_path)
+def test_parse_log_normal_termination(replica_result: GaussianResult) -> None:
+    result = replica_result
 
     assert isinstance(result, GaussianResult)
     assert isinstance(result.run_info, GaussianRunMetadata)
@@ -46,8 +46,8 @@ def test_parse_log_normal_termination(replica_log_path: Path) -> None:
     assert info.scannames is None
 
 
-def test_parse_log_raw_is_populated(replica_log_path: Path) -> None:
-    result = parse_log(replica_log_path)
+def test_parse_log_raw_is_populated(replica_result: GaussianResult) -> None:
+    result = replica_result
     assert result.raw is not None
     assert hasattr(result.raw, "scfenergies")
     assert float(result.raw.scfenergies[-1]) < 0
@@ -89,3 +89,18 @@ def test_metadata_is_a_fresh_dict(replica_log_path: Path) -> None:
     result.run_info.metadata["package"] = "MUTATED"
     second = parse_log(replica_log_path)
     assert second.run_info.metadata["package"] == "Gaussian"
+
+
+def test_parse_log_merges_self_parsed_esp_into_atomcharges(
+    replica_result: GaussianResult,
+) -> None:
+    """cclib 1.8.x drops the ESP block for our G16 fixture; parser.parse_log
+    must recover it via the self-parser so downstream callers can reach
+    ``raw.atomcharges["esp"]`` uniformly."""
+    result = replica_result
+    atomcharges = result.raw.atomcharges
+    assert "esp" in atomcharges
+    esp = atomcharges["esp"]
+    assert len(esp) == result.run_info.natom
+    assert float(esp[0]) == pytest.approx(-0.099950, abs=1e-6)
+    assert "mulliken" in atomcharges
