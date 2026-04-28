@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Declare `polars>=1.0` as a runtime dependency. The package's
+  `_json_safe` module imports polars internally; pip-only installs would
+  previously fail at import time.
+
 ## [0.1.0] - 2026-04-28
 
 ### Added
