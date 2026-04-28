@@ -18,19 +18,21 @@ rendered SLURM batch templates already invoke the new path.
 
 ## Install
 
-Recommended:
+Install from a tagged GitHub release. This is the canonical and only supported install path.
 
-    # via conda-forge (pulls openbabel cleanly as a runtime dep)
-    conda install -c conda-forge gaussian-job-results
-
-Until the conda-forge feedstock lands, install from a GitHub release tarball:
-
-    # OpenBabel must be available in your environment first
-    # (e.g. `conda install -c conda-forge openbabel` or distro-specific package).
+    # OpenBabel must already be available in your environment.
+    # In practice the only working binary channel for OpenBabel is conda-forge
+    # (`conda install -c conda-forge openbabel`); use your distro's package or
+    # build from source if conda is not an option.
     # Then:
     pip install "git+https://github.com/miyake-ken/gaussian-results-py.git@v0.1.0"
 
-PyPI is intentionally not used as a distribution channel for this package — `gaussian-results-py` may be subdivided or merged with sibling packages in the future, and a published-then-yanked PyPI history is awkward to manage. The conda-forge feedstock and the GitHub releases are the supported install paths.
+Or, when consuming from a Pixi workspace, pin the same git ref under `[pypi-dependencies]`:
+
+    [pypi-dependencies]
+    gaussian_job_results = { git = "https://github.com/miyake-ken/gaussian-results-py.git", tag = "v0.1.0" }
+
+Neither PyPI nor the official conda-forge channel is used as a distribution channel for this package. `gaussian-results-py` may be subdivided or merged with sibling packages in the future, and a published-then-yanked release history (PyPI yanks, feedstock retractions) is awkward to manage; the conda-forge staged-recipes submission was withdrawn on 2026-04-28. The tagged GitHub releases are therefore the only supported install path. The OpenBabel runtime dependency is a separate concern: OpenBabel itself is still most reliably installed from conda-forge, but that is a fact about OpenBabel's own distribution, not a recommendation to install `gaussian-results-py` via conda-forge.
 
 ## Usage (Python API)
 

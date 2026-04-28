@@ -9,9 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Documented conda-forge as the canonical install path. PyPI is
-  intentionally not used; install from a GitHub release tarball is the
-  fallback while the conda-forge feedstock is in review.
+- Documented tagged GitHub releases as the canonical (and only
+  supported) install path. Neither PyPI nor the official conda-forge
+  channel is used as a distribution channel for this package; the
+  conda-forge staged-recipes submission was withdrawn on 2026-04-28.
+  Consumers (including the upstream `miyake-ken/GAUSSIAN_repo` Pixi
+  workspace) install via
+  `git+https://github.com/miyake-ken/gaussian-results-py.git@v0.1.0`.
 
 ### Fixed
 
