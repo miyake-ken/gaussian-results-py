@@ -115,7 +115,7 @@ NO_CHARGES
 @<TRIPOS>ATOM
       1 C       0.0000    0.0000
 """)
-    with pytest.raises(Mol2ParseError, match="line 8"):
+    with pytest.raises(Mol2ParseError, match="line 7"):
         read_mol2(p)
 
 
@@ -130,7 +130,7 @@ NO_CHARGES
 @<TRIPOS>ATOM
       1 C       NaNzz     0.0000    0.0000 C.3
 """)
-    with pytest.raises(Mol2ParseError, match="line 8"):
+    with pytest.raises(Mol2ParseError, match="line 7"):
         read_mol2(p)
 
 
