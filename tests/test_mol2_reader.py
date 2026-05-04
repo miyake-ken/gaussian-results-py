@@ -1,3 +1,5 @@
+import os
+import stat
 from pathlib import Path
 
 import pytest
@@ -163,7 +165,6 @@ def test_read_mol2_nonexistent_path_raises_filenotfound(tmp_path: Path):
 
 
 def test_read_mol2_unreadable_path_raises_permissionerror(tmp_path: Path):
-    import os, stat
     p = tmp_path / "locked.mol2"
     p.write_text("@<TRIPOS>MOLECULE\nx\n0 0 0 0 0\nSMALL\nNO_CHARGES\n")
     os.chmod(p, 0)
