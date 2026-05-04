@@ -89,3 +89,86 @@ def test_read_mol2_returns_tuple(tmp_path: Path):
     p.write_text(_METHANE_MOL2)
     atoms = read_mol2(p)
     assert isinstance(atoms, tuple)
+
+
+def test_read_mol2_missing_atom_section_raises(tmp_path: Path):
+    p = tmp_path / "no_atom.mol2"
+    p.write_text("""\
+@<TRIPOS>MOLECULE
+empty
+    0     0     0     0     0
+SMALL
+NO_CHARGES
+""")
+    with pytest.raises(Mol2ParseError, match="no @<TRIPOS>ATOM section"):
+        read_mol2(p)
+
+
+def test_read_mol2_malformed_field_count_raises(tmp_path: Path):
+    p = tmp_path / "short.mol2"
+    p.write_text("""\
+@<TRIPOS>MOLECULE
+short
+    1     0     0     0     0
+SMALL
+NO_CHARGES
+@<TRIPOS>ATOM
+      1 C       0.0000    0.0000
+""")
+    with pytest.raises(Mol2ParseError, match="line 8"):
+        read_mol2(p)
+
+
+def test_read_mol2_non_numeric_xyz_raises(tmp_path: Path):
+    p = tmp_path / "bad_xyz.mol2"
+    p.write_text("""\
+@<TRIPOS>MOLECULE
+bad
+    1     0     0     0     0
+SMALL
+NO_CHARGES
+@<TRIPOS>ATOM
+      1 C       NaNzz     0.0000    0.0000 C.3
+""")
+    with pytest.raises(Mol2ParseError, match="line 8"):
+        read_mol2(p)
+
+
+def test_read_mol2_multi_molecule_raises(tmp_path: Path):
+    p = tmp_path / "multi.mol2"
+    p.write_text("""\
+@<TRIPOS>MOLECULE
+mol_a
+    1     0     0     0     0
+SMALL
+NO_CHARGES
+@<TRIPOS>ATOM
+      1 C       0.0000    0.0000    0.0000 C.3
+@<TRIPOS>MOLECULE
+mol_b
+    1     0     0     0     0
+SMALL
+NO_CHARGES
+@<TRIPOS>ATOM
+      1 N       1.0000    0.0000    0.0000 N.3
+""")
+    with pytest.raises(Mol2ParseError, match="multi-molecule"):
+        read_mol2(p)
+
+
+def test_read_mol2_nonexistent_path_raises_filenotfound(tmp_path: Path):
+    p = tmp_path / "does_not_exist.mol2"
+    with pytest.raises(FileNotFoundError):
+        read_mol2(p)
+
+
+def test_read_mol2_unreadable_path_raises_permissionerror(tmp_path: Path):
+    import os, stat
+    p = tmp_path / "locked.mol2"
+    p.write_text("@<TRIPOS>MOLECULE\nx\n0 0 0 0 0\nSMALL\nNO_CHARGES\n")
+    os.chmod(p, 0)
+    try:
+        with pytest.raises(PermissionError):
+            read_mol2(p)
+    finally:
+        os.chmod(p, stat.S_IRUSR | stat.S_IWUSR)

@@ -39,7 +39,7 @@ def read_mol2(path: Path | str) -> tuple[Mol2Atom, ...]:
     atom_section_seen = False
     atoms: list[Mol2Atom] = []
 
-    for lineno, raw in enumerate(text.splitlines(), start=1):
+    for lineno, raw in enumerate(text.splitlines(), start=2):
         stripped = raw.strip()
         if not stripped or stripped.startswith("#"):
             continue
