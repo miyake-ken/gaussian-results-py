@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-05-04
+
+### Added
+
+- Public `read_mol2(path) -> tuple[Mol2Atom, ...]` Tripos mol2 ATOM-block reader.
+- `Mol2Atom` dataclass and `Mol2ParseError` exception class.
+
 ### Changed
 
 - Documented tagged GitHub releases as the canonical (and only
@@ -22,6 +29,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Declare `polars>=1.0` as a runtime dependency. The package's
   `_json_safe` module imports polars internally; pip-only installs would
   previously fail at import time.
+
+### Notes
+
+- Required by `gaussian_compute_runtime` ≥ 0.2.0 (sub-spec γ of the experiment-manager system). See γ design spec under the meta-repo `docs/specs/`.
 
 ## [0.1.0] - 2026-04-28
 

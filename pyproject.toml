@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "gaussian_job_results"
-version = "0.1.0"
+version = "0.2.0"
 description = "Parse a Gaussian .out log into a structured result and export the optimized geometry as a Tripos .mol2 (with optional ESP/Mulliken charges)."
 readme = "README.md"
 license = "MIT"
