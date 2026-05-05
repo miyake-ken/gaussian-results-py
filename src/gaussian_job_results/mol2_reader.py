@@ -7,12 +7,13 @@ from pathlib import Path
 @dataclass(frozen=True)
 class Mol2Atom:
     """A single atom record from a Tripos mol2 ATOM block."""
+
     atom_id: int
-    name:    str
-    x:       float
-    y:       float
-    z:       float
-    symbol:  str
+    name: str
+    x: float
+    y: float
+    z: float
+    symbol: str
 
 
 class Mol2ParseError(ValueError):
@@ -44,7 +45,7 @@ def read_mol2(path: Path | str) -> tuple[Mol2Atom, ...]:
         if not stripped or stripped.startswith("#"):
             continue
         if stripped.startswith("@<TRIPOS>"):
-            section = stripped[len("@<TRIPOS>"):]
+            section = stripped[len("@<TRIPOS>") :]
             if section == "MOLECULE":
                 molecule_count += 1
                 if molecule_count > 1:
@@ -60,21 +61,25 @@ def read_mol2(path: Path | str) -> tuple[Mol2Atom, ...]:
                     f"expected >=6 fields, got {len(fields)}"
                 )
             try:
-                atom_id   = int(fields[0])
-                name      = fields[1]
-                x         = float(fields[2])
-                y         = float(fields[3])
-                z         = float(fields[4])
+                atom_id = int(fields[0])
+                name = fields[1]
+                x = float(fields[2])
+                y = float(fields[3])
+                z = float(fields[4])
                 atom_type = fields[5]
             except ValueError as exc:
-                raise Mol2ParseError(
-                    f"malformed atom record at line {lineno}: {exc}"
-                ) from exc
+                raise Mol2ParseError(f"malformed atom record at line {lineno}: {exc}") from exc
             symbol = atom_type.split(".", 1)[0]
-            atoms.append(Mol2Atom(
-                atom_id=atom_id, name=name,
-                x=x, y=y, z=z, symbol=symbol,
-            ))
+            atoms.append(
+                Mol2Atom(
+                    atom_id=atom_id,
+                    name=name,
+                    x=x,
+                    y=y,
+                    z=z,
+                    symbol=symbol,
+                )
+            )
 
     if not atom_section_seen:
         raise Mol2ParseError("no @<TRIPOS>ATOM section")

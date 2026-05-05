@@ -53,9 +53,7 @@ def test_read_mol2_single_atom(tmp_path: Path):
     p.write_text(_SINGLE_ATOM_MOL2)
     atoms = read_mol2(p)
     assert len(atoms) == 1
-    assert atoms[0] == Mol2Atom(
-        atom_id=1, name="Ar", x=0.0, y=0.0, z=0.0, symbol="Ar"
-    )
+    assert atoms[0] == Mol2Atom(atom_id=1, name="Ar", x=0.0, y=0.0, z=0.0, symbol="Ar")
 
 
 def test_read_mol2_methane_5_atoms(tmp_path: Path):
@@ -63,8 +61,8 @@ def test_read_mol2_methane_5_atoms(tmp_path: Path):
     p.write_text(_METHANE_MOL2)
     atoms = read_mol2(p)
     assert len(atoms) == 5
-    assert atoms[0].symbol == "C"      # C.3 → "C"
-    assert atoms[1].symbol == "H"      # already "H"
+    assert atoms[0].symbol == "C"  # C.3 → "C"
+    assert atoms[1].symbol == "H"  # already "H"
     assert atoms[0].atom_id == 1
     assert atoms[4].atom_id == 5
     assert atoms[0].x == 0.0
